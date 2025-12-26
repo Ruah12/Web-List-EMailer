@@ -39,3 +39,10 @@ build/
 # Local application properties override
 /application-local.properties
 
+### Sensitive Files (not committed) ###
+# Application properties contains encrypted passwords - use application.properties.example as template
+src/main/resources/application.properties
+
+# Email list contains real email addresses - use email-list.txt.example as template
+src/main/resources/email-list.txt
+

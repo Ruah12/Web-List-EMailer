@@ -84,10 +84,10 @@ let currentHiliteColor = '#ffff00';
 let stopSendingRequested = false;
 
 /**
- * Current theme - 'dark' (default) or 'light'
+ * Current theme - 'light' (default) or 'dark'
  * @type {string}
  */
-let currentTheme = 'dark';
+let currentTheme = 'light';
 
 /* ============================================================================
    2. DOM READY INITIALIZATION
@@ -98,6 +98,34 @@ let currentTheme = 'dark';
 
 document.addEventListener('DOMContentLoaded', function() {
     const editor = document.getElementById('editor');
+
+    // -----------------------------------------
+    // Set Default Editor Text Color from Server Config
+    // -----------------------------------------
+    const defaultTextColor = (window.editorConfig && window.editorConfig.defaultTextColor) || 'white';
+    if (editor) {
+        // Set the editor's default text color via CSS
+        editor.style.color = defaultTextColor;
+
+        // Set initial content with the correct color
+        if (editor.innerHTML.trim() === '' || editor.innerHTML === '<p>Type your email here...</p>') {
+            editor.innerHTML = '<p style="color:' + defaultTextColor + ';">Type your email here...</p>';
+        }
+
+        // When user starts typing, ensure new text uses the default color
+        editor.addEventListener('focus', function() {
+            // Select all and set color only if empty or default text
+            if (this.innerText.trim() === '' || this.innerText.trim() === 'Type your email here...') {
+                document.execCommand('selectAll', false, null);
+                document.execCommand('foreColor', false, defaultTextColor);
+                // Collapse selection to end
+                const sel = window.getSelection();
+                if (sel.rangeCount > 0) {
+                    sel.collapseToEnd();
+                }
+            }
+        }, { once: true });
+    }
 
     // -----------------------------------------
     // Toolbar Button Click Handlers
@@ -287,6 +315,24 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('subject').addEventListener('input', enableSendButton);
 
     // -----------------------------------------
+    // Selection Change Handler - Update Toolbar State (like MS Word)
+    // -----------------------------------------
+    document.addEventListener('selectionchange', function() {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            // Only update if selection is within the editor
+            if (editor.contains(range.commonAncestorContainer)) {
+                updateToolbarState();
+            }
+        }
+    });
+
+    // Also update on mouseup and keyup within editor
+    editor.addEventListener('mouseup', updateToolbarState);
+    editor.addEventListener('keyup', updateToolbarState);
+
+    // -----------------------------------------
     // Image Selection Handler
     // -----------------------------------------
     // Click on image to select it for resizing/deletion
@@ -311,33 +357,169 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /* ============================================================================
-   2.1 THEME TOGGLE FUNCTIONS
+   2.1 TOOLBAR STATE UPDATE (like MS Word)
+   ============================================================================
+   Updates toolbar buttons/dropdowns to reflect current selection formatting.
+   ============================================================================ */
+
+/**
+ * Updates toolbar state to reflect the formatting of the current selection.
+ * This mimics MS Word behavior where toolbar shows current text properties.
+ */
+function updateToolbarState() {
+    // Update Bold button
+    const boldBtn = document.querySelector('[data-cmd="bold"]');
+    if (boldBtn) {
+        if (document.queryCommandState('bold')) {
+            boldBtn.classList.add('active');
+        } else {
+            boldBtn.classList.remove('active');
+        }
+    }
+
+    // Update Italic button
+    const italicBtn = document.querySelector('[data-cmd="italic"]');
+    if (italicBtn) {
+        if (document.queryCommandState('italic')) {
+            italicBtn.classList.add('active');
+        } else {
+            italicBtn.classList.remove('active');
+        }
+    }
+
+    // Update Underline button
+    const underlineBtn = document.querySelector('[data-cmd="underline"]');
+    if (underlineBtn) {
+        if (document.queryCommandState('underline')) {
+            underlineBtn.classList.add('active');
+        } else {
+            underlineBtn.classList.remove('active');
+        }
+    }
+
+    // Update Strikethrough button
+    const strikeBtn = document.querySelector('[data-cmd="strikeThrough"]');
+    if (strikeBtn) {
+        if (document.queryCommandState('strikeThrough')) {
+            strikeBtn.classList.add('active');
+        } else {
+            strikeBtn.classList.remove('active');
+        }
+    }
+
+    // Update Subscript button
+    const subBtn = document.querySelector('[data-cmd="subscript"]');
+    if (subBtn) {
+        if (document.queryCommandState('subscript')) {
+            subBtn.classList.add('active');
+        } else {
+            subBtn.classList.remove('active');
+        }
+    }
+
+    // Update Superscript button
+    const supBtn = document.querySelector('[data-cmd="superscript"]');
+    if (supBtn) {
+        if (document.queryCommandState('superscript')) {
+            supBtn.classList.add('active');
+        } else {
+            supBtn.classList.remove('active');
+        }
+    }
+
+    // Update alignment buttons
+    const alignLeftBtn = document.querySelector('[data-cmd="justifyLeft"]');
+    const alignCenterBtn = document.querySelector('[data-cmd="justifyCenter"]');
+    const alignRightBtn = document.querySelector('[data-cmd="justifyRight"]');
+    const alignFullBtn = document.querySelector('[data-cmd="justifyFull"]');
+
+    if (alignLeftBtn) alignLeftBtn.classList.toggle('active', document.queryCommandState('justifyLeft'));
+    if (alignCenterBtn) alignCenterBtn.classList.toggle('active', document.queryCommandState('justifyCenter'));
+    if (alignRightBtn) alignRightBtn.classList.toggle('active', document.queryCommandState('justifyRight'));
+    if (alignFullBtn) alignFullBtn.classList.toggle('active', document.queryCommandState('justifyFull'));
+
+    // Update list buttons
+    const ulBtn = document.querySelector('[data-cmd="insertUnorderedList"]');
+    const olBtn = document.querySelector('[data-cmd="insertOrderedList"]');
+    if (ulBtn) ulBtn.classList.toggle('active', document.queryCommandState('insertUnorderedList'));
+    if (olBtn) olBtn.classList.toggle('active', document.queryCommandState('insertOrderedList'));
+
+    // Update Font Size dropdown
+    const fontSizeSelect = document.getElementById('fontSize');
+    if (fontSizeSelect) {
+        const fontSize = document.queryCommandValue('fontSize');
+        if (fontSize && fontSize !== '') {
+            fontSizeSelect.value = fontSize;
+        }
+    }
+
+    // Update Font Family dropdown
+    const fontFamilySelect = document.getElementById('fontFamily');
+    if (fontFamilySelect) {
+        let fontName = document.queryCommandValue('fontName');
+        if (fontName) {
+            // Remove quotes if present
+            fontName = fontName.replace(/['"]/g, '');
+            // Try to match with available options
+            const options = Array.from(fontFamilySelect.options);
+            const match = options.find(opt =>
+                opt.value.toLowerCase() === fontName.toLowerCase() ||
+                fontName.toLowerCase().includes(opt.value.toLowerCase())
+            );
+            if (match) {
+                fontFamilySelect.value = match.value;
+            }
+        }
+    }
+
+    // Update Font Color indicator
+    const fontColorBar = document.getElementById('fontColorBar');
+    if (fontColorBar) {
+        const color = document.queryCommandValue('foreColor');
+        if (color) {
+            fontColorBar.style.background = color;
+        }
+    }
+
+    // Update Highlight Color indicator
+    const hiliteColorBar = document.getElementById('hiliteColorBar');
+    if (hiliteColorBar) {
+        const color = document.queryCommandValue('hiliteColor');
+        if (color && color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)') {
+            hiliteColorBar.style.background = color;
+        }
+    }
+}
+
+/* ============================================================================
+   2.2 THEME TOGGLE FUNCTIONS
    ============================================================================
    Functions for switching between dark and light themes.
    ============================================================================ */
 
 /**
- * Toggles between dark and light themes
+ * Toggles between light and dark themes
+ * Light theme is default. Dark theme adds 'theme-dark' class to body.
  */
 function toggleTheme() {
     const body = document.body;
     const themeIcon = document.getElementById('themeIcon');
 
-    if (currentTheme === 'dark') {
-        // Switch to light theme
-        body.classList.add('theme-light');
-        currentTheme = 'light';
-        if (themeIcon) {
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
-        }
-    } else {
+    if (currentTheme === 'light') {
         // Switch to dark theme
-        body.classList.remove('theme-light');
+        body.classList.add('theme-dark');
         currentTheme = 'dark';
         if (themeIcon) {
             themeIcon.classList.remove('fa-moon');
             themeIcon.classList.add('fa-sun');
+        }
+    } else {
+        // Switch to light theme
+        body.classList.remove('theme-dark');
+        currentTheme = 'light';
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
         }
     }
 
@@ -347,12 +529,20 @@ function toggleTheme() {
 
 /**
  * Loads saved theme preference from localStorage
+ * Light is default, so only switch if 'dark' was saved
  */
 function loadThemePreference() {
     const savedTheme = localStorage.getItem('editorTheme');
-    if (savedTheme === 'light') {
-        currentTheme = 'dark'; // Set to opposite so toggle switches correctly
+    if (savedTheme === 'dark') {
+        currentTheme = 'light'; // Set to opposite so toggle switches correctly
         toggleTheme();
+    } else {
+        // Ensure icon is correct for light theme (moon icon to switch to dark)
+        const themeIcon = document.getElementById('themeIcon');
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
     }
 }
 
@@ -575,6 +765,7 @@ function changeFontSize(direction) {
 
     fontSizeSelect.value = newValue;
     document.execCommand('fontSize', false, newValue.toString());
+    updateToolbarState(); // Update toolbar to reflect change
 }
 
 /**

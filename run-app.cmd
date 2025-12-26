@@ -21,11 +21,11 @@ if not exist "%JAR_PATH%" (
 
 echo [INFO] Using JAVA_CMD=%JAVA_CMD%
 echo [INFO] Starting email list application on port %PORT% ...
-echo [INFO] Opening browser in 4 seconds...
+echo [INFO] Browser will open automatically when server is ready...
 echo.
 
-REM Open browser after delay in background
-start /B cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:%PORT%/"
+REM Open browser after delay in background (5 seconds to allow Spring Boot to start)
+start /B cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:%PORT%/"
 
 REM Run Java in foreground (same window) so only one CMD window exists
 "%JAVA_CMD%" -jar "%JAR_PATH%" --server.port=%PORT%

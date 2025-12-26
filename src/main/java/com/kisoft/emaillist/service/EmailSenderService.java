@@ -245,6 +245,16 @@ public class EmailSenderService {
         Document doc = Jsoup.parseBodyFragment(htmlContent);
         Element body = doc.body();
 
+        // Convert white text to black for email (emails typically have white background)
+        convertWhiteTextToBlack(body);
+
+        // Convert deprecated <font size="N"> tags to inline CSS font-size
+        // HTML font sizes 1-7 map to approximately: 12px (min), 13px, 16px, 18px, 24px, 32px, 48px
+        convertFontTagsToInlineStyles(body);
+
+        // Enforce minimum font size of 14px for Outlook compatibility
+        enforceMinimumFontSize(body, 14);
+
         // ONLY process images that have float:left style (intended side-by-side layout)
         java.util.List<Element> floatedImages = new java.util.ArrayList<>();
         for (Element img : body.select("img")) {
@@ -459,35 +469,222 @@ public class EmailSenderService {
     }
 
     /**
+     * Enforces a minimum font size for all text in the email.
+     * This ensures text is visible in email clients that may have minimum rendering sizes.
+     *
+     * @param body The document body element
+     * @param minPx The minimum font size in pixels (e.g., 12)
+     */
+    private static void enforceMinimumFontSize(Element body, int minPx) {
+        // Find all elements with font-size in style attribute
+        for (Element el : body.select("[style*=font-size]")) {
+            String style = el.attr("style");
+            if (style == null || style.isBlank()) continue;
+
+            // Extract font-size value
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)font-size\\s*:\\s*(\\d+)(px|pt)?")
+                .matcher(style);
+
+            if (m.find()) {
+                try {
+                    int size = Integer.parseInt(m.group(1));
+                    String unit = m.group(2);
+
+                    // Convert pt to px (approximately 1pt = 1.33px)
+                    if ("pt".equalsIgnoreCase(unit)) {
+                        size = (int) Math.round(size * 1.33);
+                    }
+
+                    // If font size is below minimum, replace with minimum
+                    if (size < minPx) {
+                        String newStyle = style.replaceAll(
+                            "(?i)font-size\\s*:\\s*\\d+(px|pt)?",
+                            "font-size:" + minPx + "px"
+                        );
+                        el.attr("style", newStyle);
+                    }
+                } catch (NumberFormatException e) {
+                    // Ignore non-numeric font sizes
+                }
+            }
+        }
+    }
+
+    /**
+     * Converts white text to black for email compatibility.
+     * The editor may use white text (for dark theme), but emails typically have white background.
+     * This converts white/near-white colors to black so text is visible in email clients.
+     */
+    private static void convertWhiteTextToBlack(Element body) {
+        // Find all elements with white-ish color in style attribute
+        for (Element el : body.select("[style*=color]")) {
+            String style = el.attr("style");
+            if (style == null || style.isBlank()) continue;
+
+            // Check for white color variations
+            String styleLower = style.toLowerCase();
+            if (styleLower.contains("color: white") ||
+                styleLower.contains("color:white") ||
+                styleLower.contains("color: #fff") ||
+                styleLower.contains("color:#fff") ||
+                styleLower.contains("color: #ffffff") ||
+                styleLower.contains("color:#ffffff") ||
+                styleLower.contains("color: rgb(255, 255, 255)") ||
+                styleLower.contains("color:rgb(255,255,255)") ||
+                styleLower.contains("color: rgb(255,255,255)")) {
+
+                // Replace white with black
+                String newStyle = style
+                    .replaceAll("(?i)color\\s*:\\s*white", "color: black")
+                    .replaceAll("(?i)color\\s*:\\s*#fff(?!\\w)", "color: #000")
+                    .replaceAll("(?i)color\\s*:\\s*#ffffff", "color: #000000")
+                    .replaceAll("(?i)color\\s*:\\s*rgb\\s*\\(\\s*255\\s*,\\s*255\\s*,\\s*255\\s*\\)", "color: rgb(0, 0, 0)");
+                el.attr("style", newStyle);
+            }
+        }
+
+        // Also handle <font color="white"> attributes
+        for (Element font : body.select("font[color]")) {
+            String color = font.attr("color").toLowerCase();
+            if (color.equals("white") || color.equals("#fff") || color.equals("#ffffff")) {
+                font.attr("color", "#000000");
+            }
+        }
+    }
+
+    /**
+     * Converts deprecated HTML font tags to inline CSS styles.
+     * The execCommand('fontSize') uses font size values 1-7 which map to:
+     * 1=12px (minimum), 2=13px, 3=16px, 4=18px, 5=24px, 6=32px, 7=48px
+     * Email clients handle these inconsistently, so we convert to explicit px values.
+     * Minimum font size is 14px to ensure visibility in all email clients including MS Outlook.
+     */
+    private static void convertFontTagsToInlineStyles(Element body) {
+        // Map HTML font size attribute (1-7) to CSS pixel sizes
+        // Sizes 1-3 map to 14px minimum for Outlook compatibility
+        // Dropdown shows: 14(3), 16(4), 18(5), 24(6), 36(7)
+        java.util.Map<String, String> fontSizeMap = java.util.Map.of(
+            "1", "14px",  // Minimum 14px for Outlook compatibility
+            "2", "14px",  // Minimum 14px for Outlook compatibility
+            "3", "14px",  // 14px - matches dropdown
+            "4", "16px",  // 16px - matches dropdown
+            "5", "18px",  // 18px - matches dropdown
+            "6", "24px",  // 24px - matches dropdown
+            "7", "36px"   // 36px - matches dropdown
+        );
+
+        for (Element font : body.select("font[size]")) {
+            String sizeAttr = font.attr("size");
+            String pxSize = fontSizeMap.getOrDefault(sizeAttr, "14px");
+
+            // Build inline style
+            StringBuilder style = new StringBuilder();
+            style.append("font-size:").append(pxSize).append(";");
+
+            // Preserve color attribute if present
+            String color = font.attr("color");
+            if (color != null && !color.isBlank()) {
+                style.append("color:").append(color).append(";");
+            }
+
+            // Preserve face (font-family) attribute if present
+            String face = font.attr("face");
+            if (face != null && !face.isBlank()) {
+                style.append("font-family:").append(face).append(";");
+            }
+
+            // Merge with existing style if any
+            String existingStyle = font.attr("style");
+            if (existingStyle != null && !existingStyle.isBlank()) {
+                style.append(existingStyle);
+            }
+
+            // Replace <font> with <span> for better compatibility
+            Element span = new Element("span");
+            span.attr("style", style.toString());
+            span.html(font.html());
+            font.replaceWith(span);
+        }
+
+        // Also handle font tags with only color or face (no size)
+        for (Element font : body.select("font:not([size])")) {
+            StringBuilder style = new StringBuilder();
+
+            String color = font.attr("color");
+            if (color != null && !color.isBlank()) {
+                style.append("color:").append(color).append(";");
+            }
+
+            String face = font.attr("face");
+            if (face != null && !face.isBlank()) {
+                style.append("font-family:").append(face).append(";");
+            }
+
+            if (style.length() > 0) {
+                String existingStyle = font.attr("style");
+                if (existingStyle != null && !existingStyle.isBlank()) {
+                    style.append(existingStyle);
+                }
+
+                Element span = new Element("span");
+                span.attr("style", style.toString());
+                span.html(font.html());
+                font.replaceWith(span);
+            }
+        }
+    }
+
+    /**
      * Inline paragraph styles for better email client compatibility.
      * Many email clients strip or ignore CSS, so inline styles are more reliable.
      * Text wrapping is handled by the email client based on window size.
      */
     private static void inlineParagraphDefaults(Element body) {
-        // Add inline styles to paragraphs - basic margin/padding only
+        // Add inline styles to paragraphs - margin/padding AND font-size for Outlook
         for (Element p : body.select("p")) {
             String existingStyle = p.attr("style");
             if (existingStyle == null || existingStyle.isBlank()) {
-                p.attr("style", "margin:0 0 10px 0; padding:0;");
-            } else if (!existingStyle.toLowerCase().contains("margin")) {
-                p.attr("style", existingStyle + "; margin:0 0 10px 0;");
+                p.attr("style", "margin:0 0 10px 0; padding:0; font-size:14px;");
+            } else {
+                StringBuilder newStyle = new StringBuilder(existingStyle);
+                if (!existingStyle.toLowerCase().contains("margin")) {
+                    newStyle.append("; margin:0 0 10px 0;");
+                }
+                if (!existingStyle.toLowerCase().contains("font-size")) {
+                    newStyle.append("; font-size:14px;");
+                }
+                p.attr("style", newStyle.toString());
             }
         }
 
-        // Add inline styles to divs - basic margin/padding only
+        // Add inline styles to divs - margin/padding AND font-size for Outlook
         for (Element div : body.select("div")) {
             String existingStyle = div.attr("style");
             if (existingStyle == null || existingStyle.isBlank()) {
-                div.attr("style", "margin:0; padding:0;");
+                div.attr("style", "margin:0; padding:0; font-size:14px;");
+            } else if (!existingStyle.toLowerCase().contains("font-size")) {
+                div.attr("style", existingStyle + "; font-size:14px;");
             }
         }
 
-        // Keep span styles as-is
+        // Add font-size to spans that don't have it
         for (Element span : body.select("span")) {
             String existingStyle = span.attr("style");
-            if (existingStyle != null && !existingStyle.isBlank()) {
-                // Keep existing styles, they're likely intentional formatting
-                continue;
+            if (existingStyle == null || existingStyle.isBlank()) {
+                span.attr("style", "font-size:14px;");
+            } else if (!existingStyle.toLowerCase().contains("font-size")) {
+                span.attr("style", existingStyle + "; font-size:14px;");
+            }
+        }
+
+        // Add font-size to table cells for Outlook
+        for (Element td : body.select("td")) {
+            String existingStyle = td.attr("style");
+            if (existingStyle != null && !existingStyle.toLowerCase().contains("font-size")) {
+                td.attr("style", existingStyle + "; font-size:14px;");
+            } else if (existingStyle == null || existingStyle.isBlank()) {
+                td.attr("style", "font-size:14px;");
             }
         }
     }

@@ -6,6 +6,7 @@ import com.kisoft.emaillist.service.EmailListService;
 import com.kisoft.emaillist.service.EmailSenderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -55,6 +56,10 @@ public class EmailController {
     /** Service for managing the email recipient list */
     private final EmailListService emailListService;
 
+    /** Default text color for the editor (from application.properties) */
+    @Value("${app.editor.default.text.color:white}")
+    private String editorDefaultTextColor;
+
     /**
      * Renders the main application page.
      *
@@ -68,6 +73,7 @@ public class EmailController {
         List<String> emails = emailListService.loadEmailList();
         model.addAttribute("emails", emails);
         model.addAttribute("emailCount", emails.size());
+        model.addAttribute("editorDefaultTextColor", editorDefaultTextColor);
         return "index";
     }
 

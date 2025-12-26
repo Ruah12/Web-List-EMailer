@@ -101,8 +101,8 @@ Dependencies:
                 <div class="card h-100">
                     <!-- Card Header with title and branding -->
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-edit"></i> Compose Email</span>
-                        <span><i class="fas fa-envelope"></i> Email Mass Sender</span>
+                        <span title="Email composition area"><i class="fas fa-edit"></i> Compose Email</span>
+                        <span title="Web-List-EMailer Application"><i class="fas fa-envelope"></i> Email Mass Sender</span>
                     </div>
                     <div class="card-body d-flex flex-column">
 
@@ -111,8 +111,8 @@ Dependencies:
                              Auto-filled with next Sunday's date on page load
                              ------------------------------------------------ -->
                         <div class="mb-3 d-flex align-items-center">
-                            <label for="subject" class="form-label mb-0 me-2"><strong>Subject:</strong></label>
-                            <input type="text" class="form-control" id="subject" placeholder="Subject will be filled automatically...">
+                            <label for="subject" class="form-label mb-0 me-2" title="Email subject line - auto-filled with next Sunday's date"><strong>Subject:</strong></label>
+                            <input type="text" class="form-control" id="subject" placeholder="Subject will be filled automatically..." title="Enter the email subject line. Auto-filled with next Sunday's date on page load.">
                         </div>
 
                         <!-- ------------------------------------------------
@@ -121,7 +121,7 @@ Dependencies:
                              ------------------------------------------------ -->
                         <div class="mb-2 flex-grow-1 d-flex flex-column">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label class="form-label mb-0"><strong>Message:</strong></label>
+                                <label class="form-label mb-0" title="Rich text email body editor - supports formatting, images, and links"><strong>Message:</strong></label>
                             </div>
 
                             <!-- ============================================
@@ -137,7 +137,7 @@ Dependencies:
                                 <!-- ROW 1: Clipboard, Font Selection, Lists, Clear -->
                                 <div class="ribbon-row-compact">
 
-                                    <!-- Clipboard Group: Paste, Cut, Copy, Format Painter -->
+                                    <!-- Clipboard Group: Paste, Cut, Copy, Format Painter, Undo, Redo -->
                                     <div class="ribbon-group">
                                         <button type="button" class="btn btn-sm btn-outline-secondary ribbon-btn-paste" data-cmd="paste" title="Paste (Ctrl+V)">
                                             <i class="fas fa-paste"></i>
@@ -145,13 +145,15 @@ Dependencies:
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="cut" title="Cut (Ctrl+X)"><i class="fas fa-cut"></i></button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="copy" title="Copy (Ctrl+C)"><i class="fas fa-copy"></i></button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="formatPainter" title="Format Painter"><i class="fas fa-paint-brush"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="undo" title="Undo (Ctrl+Z) - Click repeatedly to undo multiple actions"><i class="fas fa-undo"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="redo" title="Redo (Ctrl+Y) - Click repeatedly to redo multiple actions"><i class="fas fa-redo"></i></button>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
                                     <!-- Font Family & Size Group -->
                                     <div class="ribbon-group">
                                         <!-- Font Family Dropdown -->
-                                        <select class="form-select form-select-sm" id="fontFamily" title="Font">
+                                        <select class="form-select form-select-sm" id="fontFamily" title="Font Family - Select typeface for selected text">
                                             <option value="Arial">Arial</option>
                                             <option value="Calibri" selected>Calibri</option>
                                             <option value="Times New Roman">Times New Roman</option>
@@ -163,14 +165,15 @@ Dependencies:
                                             <option value="Comic Sans MS">Comic Sans MS</option>
                                         </select>
                                         <!-- Font Size Dropdown (values 1-7 map to HTML font sizes) -->
-                                        <select class="form-select form-select-sm" id="fontSize" title="Font Size">
+                                        <!-- Small sizes will be converted to minimum 14px when sending email -->
+                                        <select class="form-select form-select-sm" id="fontSize" title="Font Size - Small sizes auto-convert to 14px in email for Outlook compatibility">
                                             <option value="1">8</option>
                                             <option value="2">10</option>
-                                            <option value="3">11</option>
-                                            <option value="4" selected>12</option>
-                                            <option value="5">14</option>
-                                            <option value="6">18</option>
-                                            <option value="7">24</option>
+                                            <option value="3">12</option>
+                                            <option value="4" selected>14</option>
+                                            <option value="5">18</option>
+                                            <option value="6">24</option>
+                                            <option value="7">36</option>
                                         </select>
                                         <!-- Grow/Shrink Font Buttons -->
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="increaseFontSize" title="Grow Font (Ctrl+Shift+>)"><i class="fas fa-font"></i><sup>▲</sup></button>
@@ -212,7 +215,7 @@ Dependencies:
                                         <!-- Highlight Color Picker -->
                                         <div class="color-btn-wrapper">
                                             <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="hiliteColor" title="Text Highlight Color">
-                                                <i class="fas fa-pen" id="hiliteIcon" style="color:#000;"></i>
+                                                <i class="fas fa-pen" id="hiliteIcon"></i>
                                                 <span class="color-bar" id="hiliteColorBar" style="background:#ffff00;"></span>
                                             </button>
                                             <input type="color" id="hiliteColorPicker" value="#ffff00">
@@ -267,7 +270,7 @@ Dependencies:
                                     <!-- Theme Toggle Button -->
                                     <div class="ribbon-group">
                                         <button type="button" class="btn btn-sm btn-outline-secondary theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Dark/Light Theme">
-                                            <i class="fas fa-sun" id="themeIcon"></i>
+                                            <i class="fas fa-moon" id="themeIcon"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -283,8 +286,8 @@ Dependencies:
                                  - Image resize by drag
                                  - Ctrl+V image paste
                                  ============================================ -->
-                            <div id="editor" class="editor-container flex-grow-1" contenteditable="true">
-                                <p>Type your email here...</p>
+                            <div id="editor" class="editor-container flex-grow-1" contenteditable="true" title="Email body editor - Type text, paste images (Ctrl+V), drag to resize images, right-click for context menu" th:style="'color:' + ${editorDefaultTextColor}">
+                                <p th:style="'color:' + ${editorDefaultTextColor}">Type your email here...</p>
                             </div>
                         </div>
                         <!-- END MESSAGE EDITOR SECTION -->
@@ -300,51 +303,51 @@ Dependencies:
 
                             <!-- Template Management Buttons -->
                             <div class="template-buttons">
-                                <strong>Save:</strong>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(1)">1</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(2)">2</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(3)">3</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(4)">4</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(5)">5</button>
-                                <strong class="ms-2">Load:</strong>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(1)" id="loadBtn1">1</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(2)" id="loadBtn2">2</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(3)" id="loadBtn3">3</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(4)" id="loadBtn4">4</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(5)" id="loadBtn5">5</button>
+                                <strong title="Save current subject and message to a template slot">Save:</strong>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(1)" title="Save to template slot 1">1</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(2)" title="Save to template slot 2">2</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(3)" title="Save to template slot 3">3</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(4)" title="Save to template slot 4">4</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(5)" title="Save to template slot 5">5</button>
+                                <strong class="ms-2" title="Load a previously saved template">Load:</strong>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(1)" id="loadBtn1" title="Load template from slot 1">1</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(2)" id="loadBtn2" title="Load template from slot 2">2</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(3)" id="loadBtn3" title="Load template from slot 3">3</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(4)" id="loadBtn4" title="Load template from slot 4">4</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(5)" id="loadBtn5" title="Load template from slot 5">5</button>
                             </div>
 
                             <!-- Send Options Panel -->
-                            <div class="send-options mt-2 p-2 border rounded bg-light">
+                            <div class="send-options mt-2 p-2 border rounded bg-light" title="Configure how emails are sent">
                                 <!-- Individual Mode Options -->
                                 <div class="row align-items-center mb-2">
                                     <div class="col-12">
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeIndividual" value="individual" checked onchange="document.getElementById('sendMode').value='individual'">
-                                            <label class="form-check-label" for="sendModeIndividual"><strong>One by one</strong></label>
+                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeIndividual" value="individual" checked onchange="document.getElementById('sendMode').value='individual'" title="Send one email at a time to each recipient">
+                                            <label class="form-check-label" for="sendModeIndividual" title="Send one email at a time to each recipient"><strong>One by one</strong></label>
                                         </div>
-                                        <select class="form-select form-select-sm d-inline-block" id="addressMode" style="width:80px;">
+                                        <select class="form-select form-select-sm d-inline-block" id="addressMode" style="width:80px;" title="Address field type - To (visible) or BCC (hidden)">
                                             <option value="to">To</option>
                                             <option value="bcc">BCC</option>
                                         </select>
-                                        <label class="ms-3 me-1">Delay:</label>
-                                        <input type="number" class="form-control form-control-sm d-inline-block" id="sendDelay" value="500" min="0" max="60000" style="width:80px;">
-                                        <span class="text-muted">ms</span>
+                                        <label class="ms-3 me-1" title="Delay between sending each email">Delay:</label>
+                                        <input type="number" class="form-control form-control-sm d-inline-block" id="sendDelay" value="500" min="0" max="60000" style="width:80px;" title="Milliseconds to wait between sending each email (0-60000)">
+                                        <span class="text-muted" title="Milliseconds">ms</span>
                                     </div>
                                 </div>
                                 <!-- Batch Mode Options -->
                                 <div class="row align-items-center">
                                     <div class="col-12">
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeBatch" value="batch" onchange="document.getElementById('sendMode').value='batch'">
-                                            <label class="form-check-label" for="sendModeBatch"><strong>Batch</strong></label>
+                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeBatch" value="batch" onchange="document.getElementById('sendMode').value='batch'" title="Send to multiple recipients in a single email">
+                                            <label class="form-check-label" for="sendModeBatch" title="Send to multiple recipients in a single email"><strong>Batch</strong></label>
                                         </div>
-                                        <select class="form-select form-select-sm d-inline-block" id="batchAddressMode" style="width:80px;">
+                                        <select class="form-select form-select-sm d-inline-block" id="batchAddressMode" style="width:80px;" title="Address field type - BCC (hidden) or To (visible)">
                                             <option value="bcc" selected>BCC</option>
                                             <option value="to">To</option>
                                         </select>
-                                        <label class="ms-3 me-1">Size:</label>
-                                        <input type="number" class="form-control form-control-sm d-inline-block" id="batchSize" value="2" min="1" max="50" style="width:70px;">
+                                        <label class="ms-3 me-1" title="Number of recipients per batch email">Size:</label>
+                                        <input type="number" class="form-control form-control-sm d-inline-block" id="batchSize" value="2" min="1" max="50" style="width:70px;" title="Number of recipients per batch email (1-50)">
                                     </div>
                                 </div>
                                 <!-- Hidden field to track current send mode -->
@@ -355,21 +358,21 @@ Dependencies:
                             <div class="d-flex justify-content-between align-items-center mt-3">
                                 <div class="d-flex align-items-center">
                                     <!-- Test Send Button - shows first email from list -->
-                                    <button class="btn btn-outline-secondary" id="sendTestBtn" onclick="sendTestEmail()">
+                                    <button class="btn btn-outline-secondary" id="sendTestBtn" onclick="sendTestEmail()" title="Send a test email to the first recipient in the list">
                                         <i class="fas fa-paper-plane"></i> Send Test email to: <span id="testEmailTarget" th:text="${emails != null && !emails.isEmpty() ? emails.get(0) : 'N/A'}">N/A</span>
                                     </button>
                                     <!-- Connection Status Badge (updated via JS) -->
-                                    <span id="connectionStatus" class="ms-2 badge bg-secondary"><i class="fas fa-plug"></i> Checking...</span>
+                                    <span id="connectionStatus" class="ms-2 badge bg-secondary" title="Mail server connection status - checked every 20 seconds"><i class="fas fa-plug"></i> Checking...</span>
                                     <!-- Send Progress Status Line (hidden by default) -->
-                                    <span id="sendStatusLine" class="ms-3 text-muted small" style="display:none;"></span>
+                                    <span id="sendStatusLine" class="ms-3 text-muted small" style="display:none;" title="Current send progress"></span>
                                 </div>
                                 <div class="d-flex align-items-center">
                                     <!-- Stop Button (disabled by default, enabled during sending) -->
-                                    <button class="btn btn-danger btn-stop" id="stopBtn" onclick="stopSending()" disabled>
+                                    <button class="btn btn-danger btn-stop" id="stopBtn" onclick="stopSending()" disabled title="Stop the email sending process immediately">
                                         <i class="fas fa-stop"></i> Stop
                                     </button>
                                     <!-- Main Send Button -->
-                                    <button class="btn btn-primary btn-send" onclick="sendEmails()"><i class="fas fa-mail-bulk"></i> Send to All Selected</button>
+                                    <button class="btn btn-primary btn-send" onclick="sendEmails()" title="Send email to all selected recipients using the configured send mode"><i class="fas fa-mail-bulk"></i> Send to All Selected</button>
                                 </div>
                             </div>
                         </div>
@@ -392,41 +395,41 @@ Dependencies:
                 <div class="card h-100">
                     <!-- Card Header with recipient count -->
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-users"></i> Recipients</span>
+                        <span title="Email recipient list management"><i class="fas fa-users"></i> Recipients</span>
                         <!-- Total email count (from Thymeleaf model) -->
-                        <span class="badge bg-light text-dark" th:text="${emailCount}">0</span>
+                        <span class="badge bg-light text-dark" th:text="${emailCount}" title="Total number of email addresses in the list">0</span>
                     </div>
                     <div class="card-body d-flex flex-column">
 
                         <!-- Search Filter -->
                         <div class="search-box">
-                            <input type="text" class="form-control form-control-sm" id="searchEmail" placeholder="Search emails..." oninput="filterEmails()">
+                            <input type="text" class="form-control form-control-sm" id="searchEmail" placeholder="Search emails..." oninput="filterEmails()" title="Filter email list - type to search recipients">
                         </div>
 
                         <!-- Selection Buttons -->
                         <div class="select-buttons">
-                            <button class="btn btn-sm btn-outline-primary" onclick="selectAll()"><i class="fas fa-check-double"></i> All</button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()"><i class="fas fa-times"></i> None</button>
-                            <button class="btn btn-sm btn-outline-success" onclick="showAddEmailModal()"><i class="fas fa-plus"></i> Add</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="selectAll()" title="Select all recipients in the list"><i class="fas fa-check-double"></i> All</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()" title="Deselect all recipients"><i class="fas fa-times"></i> None</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="showAddEmailModal()" title="Add a new email address to the list"><i class="fas fa-plus"></i> Add</button>
                         </div>
 
                         <!-- Selection Statistics -->
-                        <div class="email-stats mb-2">Selected: <span id="selectedCount">0</span> / <span th:text="${emailCount}">0</span></div>
+                        <div class="email-stats mb-2" title="Number of selected recipients out of total">Selected: <span id="selectedCount">0</span> / <span th:text="${emailCount}">0</span></div>
 
                         <!-- Scrollable Email List -->
-                        <div class="email-list-container flex-grow-1" id="emailListContainer">
+                        <div class="email-list-container flex-grow-1" id="emailListContainer" title="Check/uncheck to select recipients, click trash icon to remove">
                             <!-- Thymeleaf loop: renders one row per email -->
                             <div th:each="email, iterStat : ${emails}" class="email-item">
-                                <span class="email-number" th:text="${iterStat.index + 1}">1</span>
-                                <input type="checkbox" class="email-checkbox" th:value="${email}" checked onchange="updateSelectedCount()">
-                                <span class="email-text" th:text="${email}">email@example.com</span>
-                                <span class="delete-btn" th:data-email="${email}" onclick="removeEmail(this.dataset.email)"><i class="fas fa-trash-alt"></i></span>
+                                <span class="email-number" th:text="${iterStat.index + 1}" title="Row number">1</span>
+                                <input type="checkbox" class="email-checkbox" th:value="${email}" checked onchange="updateSelectedCount()" title="Select/deselect this recipient">
+                                <span class="email-text" th:text="${email}" title="Recipient email address">email@example.com</span>
+                                <span class="delete-btn" th:data-email="${email}" onclick="removeEmail(this.dataset.email)" title="Remove this email from the list"><i class="fas fa-trash-alt"></i></span>
                             </div>
                         </div>
 
                         <!-- Bulk Edit Button -->
                         <div class="mt-2">
-                            <button class="btn btn-sm btn-outline-warning w-100" onclick="showBulkEditModal()"><i class="fas fa-edit"></i> Bulk Edit</button>
+                            <button class="btn btn-sm btn-outline-warning w-100" onclick="showBulkEditModal()" title="Edit the entire email list in a text area - one email per line"><i class="fas fa-edit"></i> Bulk Edit</button>
                         </div>
 
                     </div>
@@ -443,12 +446,12 @@ Dependencies:
          Slide-up panel showing failed email sends.
          Positioned above the status bar.
          ================================================================== -->
-    <div id="errorConsole" class="error-console" style="display:none;">
+    <div id="errorConsole" class="error-console" style="display:none;" title="List of failed email sends">
         <div class="error-console-header">
-            <span><i class="fas fa-exclamation-triangle"></i> Errors (<span id="errorCount">0</span>)</span>
-            <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleErrorConsole()"><i class="fas fa-times"></i></button>
+            <span title="Number of send errors"><i class="fas fa-exclamation-triangle"></i> Errors (<span id="errorCount">0</span>)</span>
+            <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleErrorConsole()" title="Close error console"><i class="fas fa-times"></i></button>
         </div>
-        <div class="error-console-body" id="errorConsoleBody">
+        <div class="error-console-body" id="errorConsoleBody" title="Error details">
             <!-- Error items populated by JavaScript -->
         </div>
     </div>
@@ -458,11 +461,11 @@ Dependencies:
          Fixed at bottom of viewport.
          Shows current status and progress during send operations.
          ================================================================== -->
-    <div class="status-bar">
+    <div class="status-bar" title="Application status and progress">
         <div class="d-flex justify-content-between align-items-center">
-            <div><span id="statusText">Ready</span></div>
-            <div class="progress-container" id="progressContainer" style="width: 300px;">
-                <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%"></div></div>
+            <div><span id="statusText" title="Current operation status">Ready</span></div>
+            <div class="progress-container" id="progressContainer" style="width: 300px;" title="Email sending progress">
+                <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%" title="Percentage of emails sent"></div></div>
             </div>
         </div>
     </div>
@@ -489,11 +492,11 @@ Dependencies:
     <div class="modal fade" id="addEmailModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Add Email</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body"><input type="email" class="form-control" id="newEmail" placeholder="Enter email address..."></div>
+                <div class="modal-header"><h5 class="modal-title">Add Email</h5><button type="button" class="btn-close" data-bs-dismiss="modal" title="Close dialog"></button></div>
+                <div class="modal-body"><input type="email" class="form-control" id="newEmail" placeholder="Enter email address..." title="Type a valid email address to add to the list"></div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addEmail()">Add</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" title="Cancel and close dialog">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addEmail()" title="Add this email to the recipient list">Add</button>
                 </div>
             </div>
         </div>
@@ -503,14 +506,14 @@ Dependencies:
     <div class="modal fade" id="bulkEditModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Bulk Edit Email List</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h5 class="modal-title">Bulk Edit Email List</h5><button type="button" class="btn-close" data-bs-dismiss="modal" title="Close dialog"></button></div>
                 <div class="modal-body">
-                    <p class="text-muted">One email per line or separate with semicolons:</p>
-                    <textarea class="form-control" id="bulkEmails" rows="15" style="font-family: monospace;"></textarea>
+                    <p class="text-muted" title="Instructions for editing">One email per line or separate with semicolons:</p>
+                    <textarea class="form-control" id="bulkEmails" rows="15" style="font-family: monospace;" title="Edit email addresses - one per line or semicolon-separated"></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveBulkEmails()">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" title="Cancel changes and close dialog">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveBulkEmails()" title="Save changes to the email list">Save</button>
                 </div>
             </div>
         </div>
@@ -522,6 +525,12 @@ Dependencies:
          - Application JavaScript
          ================================================================== -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Pass server configuration to JavaScript -->
+    <script th:inline="javascript">
+        window.editorConfig = {
+            defaultTextColor: /*[[${editorDefaultTextColor}]]*/ 'white'
+        };
+    </script>
     <script src="/js/app.js"></script>
 </body>
 </html>
