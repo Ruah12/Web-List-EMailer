@@ -104,6 +104,11 @@ mail.from.name=Your Name or Organization
 jasypt.encryptor.password=your-secret-key
 ```
 
+> **Note:** The repository contains placeholder values. Your local changes to 
+> `application.properties` with real credentials should not be committed.
+> The `/email-list.txt` file in the project root is gitignored - create your own locally.
+> The sample `src/main/resources/email-list.txt` contains test emails only.
+
 ### 3. Encrypt Your SMTP Password
 
 Generate an encrypted password using Jasypt:

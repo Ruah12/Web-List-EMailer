@@ -1,0 +1,528 @@
+<!--
+================================================================================
+Email Mass Sender - Main HTML Template
+================================================================================
+
+This Thymeleaf template provides the main user interface for the Email Mass
+Sender application. It includes a rich text editor with Outlook-style ribbon
+toolbar, recipient management panel, and email sending controls.
+
+Template Structure:
+------------------
+1. HEAD Section
+   - Meta tags and viewport
+   - External CSS (Bootstrap, Font Awesome)
+   - Application CSS
+
+2. MAIN CONTAINER (Two-Column Layout)
+   2.1 Left Column - Compose Email
+       - Subject line input
+       - Outlook-style ribbon toolbar (2 rows)
+       - Rich text editor (contenteditable div)
+       - Template save/load buttons
+       - Send options (Individual/Batch mode)
+       - Send buttons (Test & Send All)
+
+   2.2 Right Column - Recipients
+       - Search box
+       - Select All/None/Add buttons
+       - Email list with checkboxes
+       - Bulk edit button
+
+3. OVERLAYS & MODALS
+   - Error console (slide-up panel)
+   - Status bar (fixed bottom)
+   - Result modal
+   - Add email modal
+   - Bulk edit modal
+
+4. SCRIPTS
+   - Bootstrap bundle
+   - Application JavaScript
+
+Thymeleaf Variables:
+-------------------
+- ${emails}     : List<String> - All email addresses
+- ${emailCount} : Integer - Total number of emails
+
+Dependencies:
+-------------
+- Bootstrap 5.3.2
+- Font Awesome 6.5.1
+- /css/app.css
+- /js/app.js
+
+@author KiSoft
+@version 1.0.0
+@since 2025-12-26
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <!-- ====================================================================
+         HEAD SECTION
+         - Character encoding and viewport for responsive design
+         - External CSS libraries (Bootstrap for layout, Font Awesome for icons)
+         - Application-specific styles
+         ==================================================================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Mass Sender</title>
+
+    <!-- Bootstrap 5.3.2 - CSS framework for responsive layout and components -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome 6.5.1 - Icon library for UI icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <!-- Application CSS - Custom styles for email sender UI -->
+    <link href="/css/app.css" rel="stylesheet">
+</head>
+<body>
+    <!-- ====================================================================
+         MAIN CONTAINER
+         Full-height container with two-column layout.
+         Left: Email composition, Right: Recipients list
+         ==================================================================== -->
+    <div class="main-container">
+        <div class="row equal-height">
+
+            <!-- ============================================================
+                 LEFT COLUMN - COMPOSE EMAIL
+                 Contains:
+                 - Subject line input
+                 - Outlook-style formatting toolbar
+                 - Rich text editor
+                 - Template management
+                 - Send options and buttons
+                 ============================================================ -->
+            <div class="col-compose">
+                <div class="card h-100">
+                    <!-- Card Header with title and branding -->
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-edit"></i> Compose Email</span>
+                        <span><i class="fas fa-envelope"></i> Email Mass Sender</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+
+                        <!-- ------------------------------------------------
+                             SUBJECT LINE INPUT
+                             Auto-filled with next Sunday's date on page load
+                             ------------------------------------------------ -->
+                        <div class="mb-3 d-flex align-items-center">
+                            <label for="subject" class="form-label mb-0 me-2"><strong>Subject:</strong></label>
+                            <input type="text" class="form-control" id="subject" placeholder="Subject will be filled automatically...">
+                        </div>
+
+                        <!-- ------------------------------------------------
+                             MESSAGE EDITOR SECTION
+                             Includes toolbar and contenteditable editor
+                             ------------------------------------------------ -->
+                        <div class="mb-2 flex-grow-1 d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="form-label mb-0"><strong>Message:</strong></label>
+                            </div>
+
+                            <!-- ============================================
+                                 OUTLOOK-STYLE EDITOR TOOLBAR
+                                 Two rows of formatting tools organized into
+                                 logical groups with visual separators.
+
+                                 Row 1: Clipboard | Font Selection | Lists | Clear
+                                 Row 2: Styles | Colors | Alignment | Spacing | Insert
+                                 ============================================ -->
+                            <div class="editor-ribbon-compact">
+
+                                <!-- ROW 1: Clipboard, Font Selection, Lists, Clear -->
+                                <div class="ribbon-row-compact">
+
+                                    <!-- Clipboard Group: Paste, Cut, Copy, Format Painter -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ribbon-btn-paste" data-cmd="paste" title="Paste (Ctrl+V)">
+                                            <i class="fas fa-paste"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="cut" title="Cut (Ctrl+X)"><i class="fas fa-cut"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="copy" title="Copy (Ctrl+C)"><i class="fas fa-copy"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="formatPainter" title="Format Painter"><i class="fas fa-paint-brush"></i></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Font Family & Size Group -->
+                                    <div class="ribbon-group">
+                                        <!-- Font Family Dropdown -->
+                                        <select class="form-select form-select-sm" id="fontFamily" title="Font">
+                                            <option value="Arial">Arial</option>
+                                            <option value="Calibri" selected>Calibri</option>
+                                            <option value="Times New Roman">Times New Roman</option>
+                                            <option value="Verdana">Verdana</option>
+                                            <option value="Georgia">Georgia</option>
+                                            <option value="Tahoma">Tahoma</option>
+                                            <option value="Trebuchet MS">Trebuchet MS</option>
+                                            <option value="Courier New">Courier New</option>
+                                            <option value="Comic Sans MS">Comic Sans MS</option>
+                                        </select>
+                                        <!-- Font Size Dropdown (values 1-7 map to HTML font sizes) -->
+                                        <select class="form-select form-select-sm" id="fontSize" title="Font Size">
+                                            <option value="1">8</option>
+                                            <option value="2">10</option>
+                                            <option value="3">11</option>
+                                            <option value="4" selected>12</option>
+                                            <option value="5">14</option>
+                                            <option value="6">18</option>
+                                            <option value="7">24</option>
+                                        </select>
+                                        <!-- Grow/Shrink Font Buttons -->
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="increaseFontSize" title="Grow Font (Ctrl+Shift+>)"><i class="fas fa-font"></i><sup>▲</sup></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="decreaseFontSize" title="Shrink Font (Ctrl+Shift+<)"><i class="fas fa-font" style="font-size:10px"></i><sub>▼</sub></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Lists & Indent Group -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Bullets"><i class="fas fa-list-ul"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Numbering"><i class="fas fa-list-ol"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="outdent" title="Decrease Indent"><i class="fas fa-outdent"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="indent" title="Increase Indent"><i class="fas fa-indent"></i></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Clear Formatting Group -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="removeFormat" title="Clear All Formatting"><i class="fas fa-eraser"></i></button>
+                                    </div>
+                                </div>
+
+                                <!-- ROW 2: Font Style, Colors, Alignment, Spacing, Insert -->
+                                <div class="ribbon-row-compact">
+
+                                    <!-- Font Formatting Group: Bold, Italic, Underline, etc. -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="italic" title="Italic (Ctrl+I)"><i><b>I</b></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="underline" title="Underline (Ctrl+U)"><u><b>U</b></u></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="strikeThrough" title="Strikethrough"><s>ab</s></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="subscript" title="Subscript">X<sub>2</sub></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="superscript" title="Superscript">X<sup>2</sup></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Colors Group: Highlight & Font Color -->
+                                    <div class="ribbon-group">
+                                        <!-- Highlight Color Picker -->
+                                        <div class="color-btn-wrapper">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="hiliteColor" title="Text Highlight Color">
+                                                <i class="fas fa-pen" id="hiliteIcon" style="color:#000;"></i>
+                                                <span class="color-bar" id="hiliteColorBar" style="background:#ffff00;"></span>
+                                            </button>
+                                            <input type="color" id="hiliteColorPicker" value="#ffff00">
+                                        </div>
+                                        <!-- Font Color Picker -->
+                                        <div class="color-btn-wrapper">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="foreColor" title="Font Color">
+                                                <span style="font-weight:bold;" id="fontColorIcon">A</span>
+                                                <span class="color-bar" id="fontColorBar" style="background:#ff0000;"></span>
+                                            </button>
+                                            <input type="color" id="fontColorPicker" value="#ff0000">
+                                        </div>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Alignment Group -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyLeft" title="Align Left (Ctrl+L)"><i class="fas fa-align-left"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyCenter" title="Center (Ctrl+E)"><i class="fas fa-align-center"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyRight" title="Align Right (Ctrl+R)"><i class="fas fa-align-right"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyFull" title="Justify"><i class="fas fa-align-justify"></i></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Line Spacing Dropdown -->
+                                    <div class="ribbon-group">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Line Spacing">
+                                                <i class="fas fa-arrows-alt-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.0);return false;">1.0</a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.15);return false;">1.15</a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.5);return false;">1.5</a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.0);return false;">2.0</a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.5);return false;">2.5</a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(3.0);return false;">3.0</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Insert Group: Link, Image, Horizontal Rule -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="createLink" title="Insert Hyperlink (Ctrl+K)"><i class="fas fa-link"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="unlink" title="Remove Hyperlink"><i class="fas fa-unlink"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="pasteImage" title="Insert Picture"><i class="fas fa-image"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertHorizontalRule" title="Insert Horizontal Line"><i class="fas fa-minus"></i></button>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- Theme Toggle Button -->
+                                    <div class="ribbon-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Dark/Light Theme">
+                                            <i class="fas fa-sun" id="themeIcon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END TOOLBAR -->
+
+                            <!-- ============================================
+                                 RICH TEXT EDITOR
+                                 Contenteditable div that serves as the email
+                                 body editor. Supports:
+                                 - Rich text formatting
+                                 - Image paste/insert
+                                 - Image resize by drag
+                                 - Ctrl+V image paste
+                                 ============================================ -->
+                            <div id="editor" class="editor-container flex-grow-1" contenteditable="true">
+                                <p>Type your email here...</p>
+                            </div>
+                        </div>
+                        <!-- END MESSAGE EDITOR SECTION -->
+
+                        <!-- ================================================
+                             COMPOSE FOOTER
+                             Fixed at bottom of compose card:
+                             - Template save/load buttons
+                             - Send mode options (Individual/Batch)
+                             - Test send & Send All buttons
+                             ================================================ -->
+                        <div class="compose-footer">
+
+                            <!-- Template Management Buttons -->
+                            <div class="template-buttons">
+                                <strong>Save:</strong>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(1)">1</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(2)">2</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(3)">3</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(4)">4</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(5)">5</button>
+                                <strong class="ms-2">Load:</strong>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(1)" id="loadBtn1">1</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(2)" id="loadBtn2">2</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(3)" id="loadBtn3">3</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(4)" id="loadBtn4">4</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(5)" id="loadBtn5">5</button>
+                            </div>
+
+                            <!-- Send Options Panel -->
+                            <div class="send-options mt-2 p-2 border rounded bg-light">
+                                <!-- Individual Mode Options -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-12">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeIndividual" value="individual" checked onchange="document.getElementById('sendMode').value='individual'">
+                                            <label class="form-check-label" for="sendModeIndividual"><strong>One by one</strong></label>
+                                        </div>
+                                        <select class="form-select form-select-sm d-inline-block" id="addressMode" style="width:80px;">
+                                            <option value="to">To</option>
+                                            <option value="bcc">BCC</option>
+                                        </select>
+                                        <label class="ms-3 me-1">Delay:</label>
+                                        <input type="number" class="form-control form-control-sm d-inline-block" id="sendDelay" value="500" min="0" max="60000" style="width:80px;">
+                                        <span class="text-muted">ms</span>
+                                    </div>
+                                </div>
+                                <!-- Batch Mode Options -->
+                                <div class="row align-items-center">
+                                    <div class="col-12">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeBatch" value="batch" onchange="document.getElementById('sendMode').value='batch'">
+                                            <label class="form-check-label" for="sendModeBatch"><strong>Batch</strong></label>
+                                        </div>
+                                        <select class="form-select form-select-sm d-inline-block" id="batchAddressMode" style="width:80px;">
+                                            <option value="bcc" selected>BCC</option>
+                                            <option value="to">To</option>
+                                        </select>
+                                        <label class="ms-3 me-1">Size:</label>
+                                        <input type="number" class="form-control form-control-sm d-inline-block" id="batchSize" value="2" min="1" max="50" style="width:70px;">
+                                    </div>
+                                </div>
+                                <!-- Hidden field to track current send mode -->
+                                <input type="hidden" id="sendMode" value="individual">
+                            </div>
+
+                            <!-- Action Buttons Row -->
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="d-flex align-items-center">
+                                    <!-- Test Send Button - shows first email from list -->
+                                    <button class="btn btn-outline-secondary" id="sendTestBtn" onclick="sendTestEmail()">
+                                        <i class="fas fa-paper-plane"></i> Send Test email to: <span id="testEmailTarget" th:text="${emails != null && !emails.isEmpty() ? emails.get(0) : 'N/A'}">N/A</span>
+                                    </button>
+                                    <!-- Connection Status Badge (updated via JS) -->
+                                    <span id="connectionStatus" class="ms-2 badge bg-secondary"><i class="fas fa-plug"></i> Checking...</span>
+                                    <!-- Send Progress Status Line (hidden by default) -->
+                                    <span id="sendStatusLine" class="ms-3 text-muted small" style="display:none;"></span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <!-- Stop Button (disabled by default, enabled during sending) -->
+                                    <button class="btn btn-danger btn-stop" id="stopBtn" onclick="stopSending()" disabled>
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                    <!-- Main Send Button -->
+                                    <button class="btn btn-primary btn-send" onclick="sendEmails()"><i class="fas fa-mail-bulk"></i> Send to All Selected</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END COMPOSE FOOTER -->
+
+                    </div>
+                </div>
+            </div>
+            <!-- END LEFT COLUMN -->
+
+            <!-- ============================================================
+                 RIGHT COLUMN - RECIPIENTS LIST
+                 Contains:
+                 - Search filter
+                 - Select All/None/Add buttons
+                 - Scrollable email list with checkboxes
+                 - Bulk edit button
+                 ============================================================ -->
+            <div class="col-recipients">
+                <div class="card h-100">
+                    <!-- Card Header with recipient count -->
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-users"></i> Recipients</span>
+                        <!-- Total email count (from Thymeleaf model) -->
+                        <span class="badge bg-light text-dark" th:text="${emailCount}">0</span>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+
+                        <!-- Search Filter -->
+                        <div class="search-box">
+                            <input type="text" class="form-control form-control-sm" id="searchEmail" placeholder="Search emails..." oninput="filterEmails()">
+                        </div>
+
+                        <!-- Selection Buttons -->
+                        <div class="select-buttons">
+                            <button class="btn btn-sm btn-outline-primary" onclick="selectAll()"><i class="fas fa-check-double"></i> All</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()"><i class="fas fa-times"></i> None</button>
+                            <button class="btn btn-sm btn-outline-success" onclick="showAddEmailModal()"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+
+                        <!-- Selection Statistics -->
+                        <div class="email-stats mb-2">Selected: <span id="selectedCount">0</span> / <span th:text="${emailCount}">0</span></div>
+
+                        <!-- Scrollable Email List -->
+                        <div class="email-list-container flex-grow-1" id="emailListContainer">
+                            <!-- Thymeleaf loop: renders one row per email -->
+                            <div th:each="email, iterStat : ${emails}" class="email-item">
+                                <span class="email-number" th:text="${iterStat.index + 1}">1</span>
+                                <input type="checkbox" class="email-checkbox" th:value="${email}" checked onchange="updateSelectedCount()">
+                                <span class="email-text" th:text="${email}">email@example.com</span>
+                                <span class="delete-btn" th:data-email="${email}" onclick="removeEmail(this.dataset.email)"><i class="fas fa-trash-alt"></i></span>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Edit Button -->
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-warning w-100" onclick="showBulkEditModal()"><i class="fas fa-edit"></i> Bulk Edit</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <!-- END RIGHT COLUMN -->
+
+        </div>
+    </div>
+    <!-- END MAIN CONTAINER -->
+
+    <!-- ==================================================================
+         ERROR CONSOLE PANEL
+         Slide-up panel showing failed email sends.
+         Positioned above the status bar.
+         ================================================================== -->
+    <div id="errorConsole" class="error-console" style="display:none;">
+        <div class="error-console-header">
+            <span><i class="fas fa-exclamation-triangle"></i> Errors (<span id="errorCount">0</span>)</span>
+            <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleErrorConsole()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="error-console-body" id="errorConsoleBody">
+            <!-- Error items populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         STATUS BAR
+         Fixed at bottom of viewport.
+         Shows current status and progress during send operations.
+         ================================================================== -->
+    <div class="status-bar">
+        <div class="d-flex justify-content-between align-items-center">
+            <div><span id="statusText">Ready</span></div>
+            <div class="progress-container" id="progressContainer" style="width: 300px;">
+                <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         MODAL DIALOGS
+         ================================================================== -->
+
+    <!-- Result Modal - Shows success/error after operations -->
+    <div class="modal fade result-modal" id="resultModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" id="resultModalHeader">
+                    <h5 class="modal-title" id="resultModalTitle">Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="resultModalBody"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Email Modal - Single email input dialog -->
+    <div class="modal fade" id="addEmailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Add Email</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body"><input type="email" class="form-control" id="newEmail" placeholder="Enter email address..."></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addEmail()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Edit Modal - Textarea for editing entire email list -->
+    <div class="modal fade" id="bulkEditModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Bulk Edit Email List</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <p class="text-muted">One email per line or separate with semicolons:</p>
+                    <textarea class="form-control" id="bulkEmails" rows="15" style="font-family: monospace;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveBulkEmails()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================
+         SCRIPTS
+         - Bootstrap bundle (includes Popper for dropdowns)
+         - Application JavaScript
+         ================================================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
+

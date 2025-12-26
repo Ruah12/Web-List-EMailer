@@ -1,0 +1,22 @@
+# ==============================================================================
+# Local Configuration Template
+# ==============================================================================
+# Copy this file to 'application-local.properties' and fill in your values.
+# The local file is ignored by Git and won't be committed.
+#
+# To use: rename to application-local.properties and run with:
+#   java -jar app.jar --spring.config.additional-location=./application-local.properties
+#
+# Or simply update src/main/resources/application.properties locally
+# (changes won't be committed if you use 'git update-index --assume-unchanged')
+# ==============================================================================
+
+# Your encrypted SMTP password (use Jasypt to encrypt)
+spring.mail.password=ENC(your-encrypted-password-here)
+
+# Optionally override other settings:
+# spring.mail.host=your-mail-server.com
+# spring.mail.username=your-email@example.com
+# mail.from=your-email@example.com
+# mail.from.name=Your Name
+

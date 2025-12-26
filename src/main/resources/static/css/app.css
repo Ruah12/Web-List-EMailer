@@ -1,0 +1,695 @@
+/**
+ * ============================================================================
+ * Email Mass Sender - Main Stylesheet
+ * ============================================================================
+ *
+ * This CSS file contains all styles for the Email Mass Sender web application.
+ * The application allows users to compose and send bulk emails with rich text
+ * formatting, image support, and recipient management.
+ *
+ * File Structure:
+ * ---------------
+ * 1. Global Styles & Layout
+ * 2. Card Components
+ * 3. Two-Column Layout (Compose & Recipients)
+ * 4. Email Editor & Toolbar
+ * 5. Recipients List
+ * 6. Status Bar & Progress
+ * 7. Modal Dialogs
+ * 8. Error Console
+ * 9. Outlook-style Ribbon Toolbar
+ *
+ * Color Scheme:
+ * -------------
+ * - Primary Gradient: #667eea → #764ba2 (purple/blue gradient)
+ * - Success: #28a745 (green)
+ * - Danger: #dc3545 (red)
+ * - Warning: #ffc107 (yellow)
+ * - Dark Theme (Ribbon): #3d3d3d, #2d2d2d
+ *
+ * @author KiSoft
+ * @version 1.0.0
+ * @since 2025-12-26
+ * ============================================================================
+ */
+
+/* ============================================================================
+   1. GLOBAL STYLES & LAYOUT
+   ============================================================================
+   Base body styles and main container configuration.
+   Uses flexbox for full-height layout with fixed status bar at bottom.
+   ============================================================================ */
+
+body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: auto; }
+
+/* Main container: Full viewport height minus status bar (60px) */
+.main-container { max-width: 100%; margin: 0 auto; padding: 10px; padding-left: 10px; padding-right: 10px; padding-bottom: 60px; height: calc(100vh - 60px); min-height: calc(100vh - 60px); display: flex; flex-direction: column; }
+
+/* ============================================================================
+   2. CARD COMPONENTS
+   ============================================================================
+   Bootstrap card overrides with custom shadow and gradient header.
+   Cards are used for both Compose Email and Recipients panels.
+   ============================================================================ */
+
+.card { box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+
+/* Purple/blue gradient header matching application branding */
+.card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; }
+
+/* ============================================================================
+   3. TWO-COLUMN LAYOUT (Compose & Recipients)
+   ============================================================================
+   Flexbox-based two-column layout:
+   - Left column (compose): Flexible width, takes remaining space
+   - Right column (recipients): Fixed 420px width for email list
+   Both columns stretch to full viewport height.
+   ============================================================================ */
+
+/* Compose column: Flexible width, grows to fill available space */
+.col-compose { flex: 1; min-width: 0; padding-right: 10px; display: flex; flex-direction: column; }
+
+/* Recipients column: Fixed width of 420px (fits 34-char emails + padding) */
+.col-recipients { flex: 0 0 420px; width: 420px; padding-left: 10px; display: flex; flex-direction: column; }
+
+/* Equal height columns container - ensures both columns match heights */
+.equal-height { display: flex; flex-wrap: nowrap; flex: 1; height: 100%; }
+.equal-height > [class*='col-'] { display: flex; flex-direction: column; height: 100%; }
+.equal-height .card { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 0; height: 100%; }
+.equal-height .card-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* ============================================================================
+   4. EMAIL EDITOR & COMPOSE SECTION
+   ============================================================================
+   Rich text editor with contenteditable div, toolbar, and compose footer.
+   Editor supports images, formatting, and dynamic resizing.
+   ============================================================================ */
+
+/* Compose card body - prevent content overflow */
+.col-compose .card-body {
+    overflow: hidden;
+}
+
+/* Footer section: Template buttons, send options, action buttons
+   Stays fixed at bottom of compose card, never scrolls */
+.compose-footer {
+    flex-shrink: 0;
+    background: white;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    margin-top: auto;
+}
+
+/* Editor wrapper - contains toolbar and editor, fills available space */
+.col-compose .mb-2.flex-grow-1 {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+/* Main editor container (contenteditable div)
+   - Vertically resizable by user
+   - Minimum height of 200px
+   - Text wraps at container boundary (not fixed column width)
+   - Scrolls vertically when content exceeds height */
+.col-compose .editor-container {
+    flex: 1;
+    min-height: 200px;
+    overflow-y: auto;
+    resize: vertical;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    background: white;
+    padding: 10px;
+    /* Text wrapping - wrap at container width, not fixed column */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: normal;
+}
+
+/* Editor focus state - blue outline matching Bootstrap */
+.editor-container:focus { outline: none; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); border-color: #86b7fe; }
+
+/* ============================================================================
+   4.1 IMAGES IN EDITOR
+   ============================================================================
+   Image handling: selection, hover effects, and resize handle.
+   Images can be selected, resized, and positioned within the editor.
+   ============================================================================ */
+
+/* Image base styles - responsive with selection indicator */
+.editor-container img { max-width: 100%; height: auto; cursor: pointer; border: 2px solid transparent; }
+
+/* Hover effect - dashed blue border indicates clickable */
+.editor-container img:hover { border: 2px dashed #007bff; }
+
+/* Selected state - solid blue border */
+.editor-container img.selected { border: 2px solid #007bff; }
+
+/* Resize handle - appears at corner of selected images
+   Positioned with JavaScript, allows drag-to-resize */
+.resize-handle { position: fixed; width: 14px; height: 14px; background: #007bff; cursor: nwse-resize; border: 2px solid white; border-radius: 2px; z-index: 1000; }
+
+/* ============================================================================
+   5. RECIPIENTS LIST
+   ============================================================================
+   Scrollable list of email recipients with checkboxes.
+   Each item shows: number, checkbox, email address, delete button.
+   ============================================================================ */
+
+/* Container for email list - scrollable with fixed border */
+.email-list-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 10px;
+    background: white;
+}
+
+/* Individual email item row */
+.email-item { display: flex; align-items: center; padding: 4px 8px; border-bottom: 1px solid #eee; }
+.email-item:hover { background-color: #f0f0f0; }
+
+/* Row number (1, 2, 3...) */
+.email-item .email-number { min-width: 28px; font-size: 12px; color: #6c757d; text-align: left; margin-right: 5px; }
+
+/* Checkbox for selecting recipients */
+.email-item input[type="checkbox"] { margin-right: 6px; flex-shrink: 0; }
+
+/* Email address text - monospace font for alignment */
+.email-item .email-text { flex-grow: 1; font-size: 13px; font-family: 'Consolas', 'Monaco', monospace; white-space: nowrap; }
+
+/* Delete button (trash icon) - red, fades in on hover */
+.email-item .delete-btn { color: #dc3545; cursor: pointer; opacity: 0.5; flex-shrink: 0; margin-left: 5px; }
+.email-item .delete-btn:hover { opacity: 1; }
+
+/* Search box above email list */
+.search-box { margin-bottom: 10px; }
+
+/* Selected count statistics */
+.email-stats { font-size: 14px; color: #6c757d; }
+
+/* Select All/None/Add buttons */
+.select-buttons { margin-bottom: 10px; }
+.select-buttons .btn { margin-right: 5px; margin-bottom: 5px; }
+
+/* ============================================================================
+   6. STATUS BAR & PROGRESS
+   ============================================================================
+   Fixed status bar at bottom of viewport showing:
+   - Status text (Ready, Sending, etc.)
+   - Progress bar during send operations
+   ============================================================================ */
+
+/* Fixed bottom status bar - dark background */
+.status-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 20px; background: #343a40; color: white; z-index: 1000; }
+
+/* Progress bar container - hidden by default, shown during sending */
+.progress-container { display: none; }
+
+/* Main send button - purple gradient matching header */
+.btn-send { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 15px 40px; font-size: 18px; }
+.btn-send:hover { background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%); }
+.btn-send:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Send status line showing success/fail counts */
+#sendStatusLine {
+    font-size: 13px;
+}
+#sendStatusLine .success-count { color: #28a745; font-weight: bold; }
+#sendStatusLine .failed-count { color: #dc3545; font-weight: bold; }
+
+/* Connection status badge (Connected/Disconnected) */
+#connectionStatus {
+    font-size: 13px;
+    padding: 6px 12px;
+    vertical-align: middle;
+}
+#connectionStatus.bg-success { background-color: #28a745 !important; }
+#connectionStatus.bg-danger { background-color: #dc3545 !important; }
+#connectionStatus.bg-secondary { background-color: #6c757d !important; }
+
+/* ============================================================================
+   7. MODAL DIALOGS
+   ============================================================================
+   Bootstrap modal customizations for result dialogs.
+   Header color changes based on send result status.
+   ============================================================================ */
+
+/* Result modal header colors based on outcome */
+.result-modal .modal-header.success { background-color: #28a745; color: white; }
+.result-modal .modal-header.error { background-color: #dc3545; color: white; }
+.result-modal .modal-header.partial { background-color: #ffc107; color: black; }
+
+/* Template save/load buttons */
+.template-buttons { margin-top: 10px; }
+.template-buttons .btn { margin: 2px; }
+
+/* Send options panel (One-by-one vs Batch, To vs BCC) */
+.send-options { font-size: 14px; }
+.send-options .form-check-inline { margin-right: 5px; }
+.send-options .form-select, .send-options .form-control { font-size: 13px; }
+
+/* ============================================================================
+   8. ERROR CONSOLE
+   ============================================================================
+   Expandable error panel that slides up from bottom when errors occur.
+   Shows failed email addresses and error messages.
+   ============================================================================ */
+
+/* Error console container - slides up from bottom */
+.error-console {
+    position: fixed;
+    bottom: 50px;  /* Above status bar */
+    left: 0;
+    right: 0;
+    background: #1e1e1e;
+    color: #f8f8f8;
+    z-index: 999;
+    max-height: 200px;
+    border-top: 2px solid #dc3545;
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Slide-up animation for error console */
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+/* Error console header with close button */
+.error-console-header {
+    background: #dc3545;
+    color: white;
+    padding: 8px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+}
+
+/* Scrollable error list body */
+.error-console-body {
+    padding: 10px 15px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+}
+
+/* Individual error item row */
+.error-console-body .error-item {
+    padding: 5px 0;
+    border-bottom: 1px solid #333;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+.error-console-body .error-item:last-child {
+    border-bottom: none;
+}
+
+/* Failed email address - red text */
+.error-console-body .error-email {
+    color: #ff6b6b;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+/* Error message text - yellow for visibility */
+.error-console-body .error-message {
+    color: #ffcc00;
+    word-wrap: break-word;
+    flex: 1;
+}
+
+/* ============================================================================
+   9. OUTLOOK-STYLE COMPACT RIBBON TOOLBAR
+   ============================================================================
+   Two-row toolbar mimicking Microsoft Outlook's ribbon interface.
+
+   Row 1: Clipboard (Paste, Cut, Copy, Format Painter) | Font Selection |
+          Lists & Indent | Clear Formatting
+
+   Row 2: Font Styles (B, I, U, S, Sub, Sup) | Colors | Alignment |
+          Line Spacing | Insert (Link, Image, HR)
+
+   Uses dark theme (#3d3d3d) with light text for contrast.
+   ============================================================================ */
+
+/* Main ribbon container - dark gradient background */
+.editor-ribbon-compact {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(to bottom, #3d3d3d, #2d2d2d);
+    border: 1px solid #1a1a1a;
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin-bottom: 6px;
+    gap: 3px;
+}
+
+/* Horizontal row containing button groups */
+.ribbon-row-compact {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+
+/* Button group - groups related buttons together */
+.ribbon-group {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+}
+
+/* Vertical separator between button groups */
+.ribbon-separator {
+    width: 1px;
+    height: 22px;
+    background: #555;
+    margin: 0 4px;
+}
+
+/* ============================================================================
+   9.1 RIBBON BUTTONS
+   ============================================================================
+   Compact buttons with transparent background, light text.
+   Hover and active states provide visual feedback.
+   Icons are white by default for dark theme.
+   ============================================================================ */
+
+/* Base button style - transparent with WHITE icons/text */
+.editor-ribbon-compact .btn {
+    padding: 3px 6px;
+    font-size: 12px;
+    border-color: transparent;
+    background: transparent;
+    color: #ffffff;
+    min-width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ensure icons inside buttons are white */
+.editor-ribbon-compact .btn i,
+.editor-ribbon-compact .btn .fa,
+.editor-ribbon-compact .btn .fas,
+.editor-ribbon-compact .btn .far {
+    color: #ffffff;
+}
+
+/* Button hover state - slightly lighter background */
+.editor-ribbon-compact .btn:hover {
+    background: #505050;
+    border-color: #666;
+    color: #fff;
+}
+
+/* Button active/pressed state */
+.editor-ribbon-compact .btn:active,
+.editor-ribbon-compact .btn.active {
+    background: #606060;
+    border-color: #888;
+    color: #fff;
+}
+
+/* Paste button - slightly larger than other buttons */
+.ribbon-btn-paste {
+    padding: 3px 8px !important;
+    font-size: 14px !important;
+}
+
+/* ============================================================================
+   9.2 FONT FAMILY & SIZE DROPDOWNS
+   ============================================================================
+   Dark-themed select dropdowns for font selection.
+   ============================================================================ */
+
+/* Base select styling - dark background */
+.editor-ribbon-compact .form-select {
+    font-size: 11px;
+    padding: 2px 22px 2px 6px;
+    height: 24px;
+    border-color: #555;
+    background-color: #3d3d3d;
+    color: #e0e0e0;
+    min-width: 90px;
+}
+
+/* Font family dropdown - wider for font names */
+.editor-ribbon-compact #fontFamily {
+    min-width: 100px;
+}
+
+/* Font size dropdown - narrow for numbers */
+.editor-ribbon-compact #fontSize {
+    min-width: 50px;
+}
+
+/* Select focus state */
+.editor-ribbon-compact .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.1rem rgba(0,123,255,.25);
+    background-color: #4d4d4d;
+}
+
+/* Dropdown options - dark theme */
+.editor-ribbon-compact .form-select option {
+    background-color: #3d3d3d;
+    color: #e0e0e0;
+}
+
+/* ============================================================================
+   9.3 COLOR PICKER BUTTONS
+   ============================================================================
+   Buttons with color bar indicator showing current color.
+   Hidden color input is triggered on button click.
+   ============================================================================ */
+
+/* Wrapper containing button and hidden color input */
+.color-btn-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Hidden color input - triggered programmatically */
+.color-btn-wrapper input[type="color"] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Color picker button layout */
+.color-btn-wrapper .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px 6px;
+    min-width: 28px;
+}
+
+/* Color indicator bar below button icon */
+.color-bar {
+    display: block;
+    width: 14px;
+    height: 3px;
+    margin-top: 1px;
+    border-radius: 1px;
+}
+
+/* ============================================================================
+   9.4 LINE SPACING DROPDOWN
+   ============================================================================
+   Dark-themed dropdown menu for line spacing options.
+   ============================================================================ */
+
+/* Dropdown menu - dark theme */
+.editor-ribbon-compact .dropdown-menu {
+    min-width: 60px;
+    font-size: 12px;
+    background: #3d3d3d;
+    border-color: #555;
+}
+
+/* Dropdown item styling */
+.editor-ribbon-compact .dropdown-item {
+    padding: 4px 12px;
+    color: #e0e0e0;
+}
+
+/* Dropdown item hover */
+.editor-ribbon-compact .dropdown-item:hover {
+    background: #505050;
+    color: #fff;
+}
+
+/* Dropdown toggle arrow positioning */
+.editor-ribbon-compact .dropdown-toggle::after {
+    margin-left: 2px;
+}
+
+/* ============================================================================
+   9.5 TEXT FORMATTING BUTTON STYLES
+   ============================================================================
+   Styles for the Bold, Italic, Underline, etc. button labels.
+   ============================================================================ */
+
+/* Bold button text */
+.editor-ribbon-compact .btn b {
+    font-weight: bold;
+}
+
+/* Italic button text */
+.editor-ribbon-compact .btn i b {
+    font-style: italic;
+}
+
+/* Underline button text */
+.editor-ribbon-compact .btn u b {
+    text-decoration: underline;
+}
+
+/* Strikethrough button text */
+.editor-ribbon-compact .btn s {
+    text-decoration: line-through;
+}
+
+/* Subscript/Superscript indicators - smaller text */
+.editor-ribbon-compact .btn sub,
+.editor-ribbon-compact .btn sup {
+    font-size: 8px;
+}
+
+/* ============================================================================
+   10. LIGHT THEME STYLES
+   ============================================================================
+   Alternative light theme for the ribbon toolbar.
+   Applied when body has class 'theme-light'.
+   ============================================================================ */
+
+/* Light theme ribbon container */
+body.theme-light .editor-ribbon-compact {
+    background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+    border: 1px solid #ccc;
+}
+
+/* Light theme buttons - dark icons/text */
+body.theme-light .editor-ribbon-compact .btn {
+    color: #333333;
+}
+
+body.theme-light .editor-ribbon-compact .btn i,
+body.theme-light .editor-ribbon-compact .btn .fa,
+body.theme-light .editor-ribbon-compact .btn .fas,
+body.theme-light .editor-ribbon-compact .btn .far {
+    color: #333333;
+}
+
+/* Light theme button hover */
+body.theme-light .editor-ribbon-compact .btn:hover {
+    background: #d0d0d0;
+    border-color: #bbb;
+    color: #000;
+}
+
+body.theme-light .editor-ribbon-compact .btn:hover i {
+    color: #000;
+}
+
+/* Light theme button active */
+body.theme-light .editor-ribbon-compact .btn:active,
+body.theme-light .editor-ribbon-compact .btn.active {
+    background: #c0c0c0;
+    border-color: #999;
+    color: #000;
+}
+
+/* Light theme separator */
+body.theme-light .ribbon-separator {
+    background: #bbb;
+}
+
+/* Light theme selects */
+body.theme-light .editor-ribbon-compact .form-select {
+    background-color: #f8f8f8;
+    border-color: #bbb;
+    color: #333;
+}
+
+body.theme-light .editor-ribbon-compact .form-select option {
+    background-color: #fff;
+    color: #333;
+}
+
+/* Light theme dropdown */
+body.theme-light .editor-ribbon-compact .dropdown-menu {
+    background: #f8f8f8;
+    border-color: #ccc;
+}
+
+body.theme-light .editor-ribbon-compact .dropdown-item {
+    color: #333;
+}
+
+body.theme-light .editor-ribbon-compact .dropdown-item:hover {
+    background: #e0e0e0;
+    color: #000;
+}
+
+/* ============================================================================
+   11. THEME TOGGLE BUTTON
+   ============================================================================
+   Button to switch between dark and light themes.
+   ============================================================================ */
+
+.theme-toggle-btn {
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-left: 6px;
+}
+
+/* ============================================================================
+   12. STOP BUTTON STYLES
+   ============================================================================
+   Button to stop email sending in progress.
+   ============================================================================ */
+
+.btn-stop {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    padding: 15px 20px;
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.btn-stop:hover {
+    background: #c82333;
+    border-color: #bd2130;
+    color: white;
+}
+
+.btn-stop:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   END OF STYLESHEET
+   ============================================================================ */
