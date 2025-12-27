@@ -122,8 +122,9 @@ public class EmailController {
         // Execute appropriate sending strategy
         if ("batch".equals(sendMode)) {
             int batchSize = (request.getBatchSize() != null && request.getBatchSize() > 0) ? request.getBatchSize() : 10;
-            log.info("Calling sendBatch with useBcc={}", useBcc);
-            result = emailSenderService.sendBatch(emails, request.getSubject(), request.getHtmlContent(), batchSize, useBcc);
+            int delayMs = (request.getDelayMs() != null && request.getDelayMs() >= 0) ? request.getDelayMs() : 500;
+            log.info("Calling sendBatch with useBcc={}, delayMs={}", useBcc, delayMs);
+            result = emailSenderService.sendBatch(emails, request.getSubject(), request.getHtmlContent(), batchSize, useBcc, delayMs);
         } else {
             result = emailSenderService.sendIndividual(emails, request.getSubject(), request.getHtmlContent(), useBcc);
         }

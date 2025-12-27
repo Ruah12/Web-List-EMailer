@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
  *   <li><b>sendMode</b>: "batch" or "individual"</li>
  *   <li><b>addressMode</b>: "to" or "bcc"</li>
  *   <li><b>batchSize</b>: Number of recipients per batch (default: 10)</li>
- *   <li><b>delaySeconds</b>: Delay between sends (default: 2)</li>
+ *   <li><b>delayMs</b>: Delay between sends in milliseconds (default: 500)</li>
  * </ul>
  *
  * @author KiSoft
@@ -52,6 +52,6 @@ public class EmailRequest {
     /** Number of recipients per batch email (default: 10, wrapper type allows null from JSON) */
     private Integer batchSize = 10;
 
-    /** Delay in seconds between sends (default: 2, wrapper type allows null from JSON) */
-    private Integer delaySeconds = 2;
+    /** Delay in milliseconds between batch sends (default: 500, wrapper type allows null from JSON) */
+    private Integer delayMs = 500;
 }

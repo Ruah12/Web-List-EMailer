@@ -778,11 +778,13 @@ function setLineSpacing(value) {
 
     if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
-        const wrapper = document.createElement('div');
+        // Use an inline wrapper to avoid introducing block-level layout differences
+        // between the browser editor and Outlook (Word engine).
+        const wrapper = document.createElement('span');
         wrapper.style.lineHeight = value.toString();
         try {
             range.surroundContents(wrapper);
-        } catch(e) {
+        } catch (e) {
             const fragment = range.extractContents();
             wrapper.appendChild(fragment);
             range.insertNode(wrapper);
@@ -955,6 +957,7 @@ function initDefaultSubject() {
    8. IMAGE HANDLING
    ============================================================================
    Functions for selecting, resizing, and managing images in the editor.
+   All images are resizable regardless of their position or float status.
    ============================================================================ */
 
 /** Currently selected image element */
@@ -969,8 +972,12 @@ let isResizing = false;
 /** Starting coordinates for resize operation */
 let startX, startY, startWidth, startHeight;
 
+/** Original aspect ratio for proportional resizing */
+let originalAspectRatio = 1;
+
 /**
  * Selects an image for editing (resize/delete)
+ * Works with ALL images regardless of float status.
  * @param {HTMLImageElement} img - The image element to select
  */
 function selectImage(img) {
@@ -979,6 +986,22 @@ function selectImage(img) {
 
     selectedImg = img;
     img.classList.add('selected');
+
+    // Store original aspect ratio for proportional resizing
+    // Use naturalWidth/naturalHeight if available, otherwise use current dimensions
+    if (img.naturalWidth && img.naturalHeight) {
+        originalAspectRatio = img.naturalHeight / img.naturalWidth;
+    } else {
+        originalAspectRatio = img.offsetHeight / img.offsetWidth;
+    }
+
+    // Ensure the image has explicit width style for resizing to work
+    // This is critical for images that don't have float:left
+    if (!img.style.width || !img.style.width.includes('px')) {
+        const currentWidth = img.offsetWidth;
+        img.style.width = currentWidth + 'px';
+        img.style.height = 'auto';
+    }
 
     resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
@@ -1015,14 +1038,29 @@ function startResize(e) {
 }
 
 /**
- * Performs the resize operation as mouse moves
+ * Performs the resize operation as mouse moves.
+ * Maintains aspect ratio using height:auto for proportional scaling.
+ * Always sets explicit width in pixels for email compatibility.
  * @param {MouseEvent} e - The mousemove event
  */
 function doResize(e) {
     if (!isResizing || !selectedImg) return;
-    const newWidth = Math.max(50, startWidth + (e.clientX - startX));
+
+    // Calculate new width based on mouse movement (minimum 10px for small icons/emojis)
+    const newWidth = Math.max(10, startWidth + (e.clientX - startX));
+
+    // Set explicit width in pixels - this is what gets preserved in the email
     selectedImg.style.width = newWidth + 'px';
+
+    // Always use height:auto for proportional scaling
+    // This ensures the image maintains its aspect ratio
     selectedImg.style.height = 'auto';
+
+    // Remove any max-width that might interfere with resizing
+    if (selectedImg.style.maxWidth && selectedImg.style.maxWidth.includes('%')) {
+        selectedImg.style.maxWidth = '';
+    }
+
     positionResizeHandle();
     enableSendButton();
 }
@@ -1051,14 +1089,19 @@ function deselectImage() {
 }
 
 /**
- * Applies float-left styling to the last image in the editor
+ * Applies float-left styling to the last image in the editor.
+ * Sets explicit pixel width for email compatibility.
  */
 function floatImageLeft() {
     const editor = document.getElementById('editor');
     const images = editor.querySelectorAll('img');
     if (images.length > 0) {
         const img = images[images.length - 1];
-        img.style.cssText = 'float:left; margin:0 15px 10px 0; max-width:40%; height:auto;';
+        // Calculate 40% of editor width as initial size
+        const editorWidth = editor.offsetWidth;
+        const targetWidth = Math.round(editorWidth * 0.4);
+        // Set explicit pixel width for email compatibility
+        img.style.cssText = 'float:left; margin:0 15px 10px 0; width:' + targetWidth + 'px; height:auto;';
     } else {
         alert('No image found. Please paste an image first.');
     }
@@ -1080,6 +1123,133 @@ document.addEventListener('keydown', function(e) {
 // Reposition resize handle on scroll/resize
 window.addEventListener('scroll', positionResizeHandle);
 window.addEventListener('resize', positionResizeHandle);
+
+/* ============================================================================
+   8.1 IMAGE DRAG AND DROP
+   ============================================================================
+   Allows dragging images to reposition them within the editor text.
+   ============================================================================ */
+
+/** Flag indicating if drag operation is in progress */
+let isDragging = false;
+
+/** The image being dragged */
+let draggedImg = null;
+
+/** Drop indicator element */
+let dropIndicator = null;
+
+/**
+ * Starts dragging an image
+ * @param {MouseEvent} e - The mousedown event
+ */
+function startDrag(e) {
+    // Don't start drag if clicking on resize handle
+    if (e.target.classList.contains('resize-handle')) return;
+    if (!selectedImg) return;
+
+    // Only start drag on left mouse button
+    if (e.button !== 0) return;
+
+    e.preventDefault();
+    isDragging = true;
+    draggedImg = selectedImg;
+    draggedImg.classList.add('dragging');
+
+    // Create drop indicator
+    dropIndicator = document.createElement('span');
+    dropIndicator.className = 'drop-indicator';
+    dropIndicator.innerHTML = '|';
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+}
+
+/**
+ * Handles drag movement - shows drop indicator at cursor position
+ * @param {MouseEvent} e - The mousemove event
+ */
+function doDrag(e) {
+    if (!isDragging || !draggedImg) return;
+
+    const editor = document.getElementById('editor');
+
+    // Get the position in the document where we'd drop
+    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+
+    if (range && editor.contains(range.startContainer)) {
+        // Remove existing indicator
+        if (dropIndicator.parentNode) {
+            dropIndicator.remove();
+        }
+
+        // Insert indicator at caret position
+        range.insertNode(dropIndicator);
+    }
+}
+
+/**
+ * Ends the drag operation and moves the image
+ */
+function stopDrag(e) {
+    if (!isDragging || !draggedImg) {
+        isDragging = false;
+        return;
+    }
+
+    document.removeEventListener('mousemove', doDrag);
+    document.removeEventListener('mouseup', stopDrag);
+
+    const editor = document.getElementById('editor');
+
+    // Get drop position from indicator
+    if (dropIndicator && dropIndicator.parentNode) {
+        // Store image properties before moving
+        const imgWidth = draggedImg.style.width;
+        const origWidth = draggedImg.getAttribute('data-original-width');
+        const origHeight = draggedImg.getAttribute('data-original-height');
+
+        // Insert image at drop indicator position
+        dropIndicator.parentNode.insertBefore(draggedImg, dropIndicator);
+
+        // Pure inline positioning - image stays exactly where dropped
+        // No float, no block - just inline element in text flow
+        draggedImg.style.cssText = 'display:inline; vertical-align:middle; margin:0 5px; width:' + imgWidth + '; height:auto;';
+
+        // Restore original dimension data
+        if (origWidth) draggedImg.setAttribute('data-original-width', origWidth);
+        if (origHeight) draggedImg.setAttribute('data-original-height', origHeight);
+
+        // Remove indicator
+        dropIndicator.remove();
+    }
+
+    draggedImg.classList.remove('dragging');
+
+    // Re-select the moved image
+    const movedImg = draggedImg;
+    isDragging = false;
+    draggedImg = null;
+    dropIndicator = null;
+
+    // Re-select and reposition handle
+    selectImage(movedImg);
+
+    enableSendButton();
+}
+
+// Add drag start listener to editor for selected images
+document.addEventListener('DOMContentLoaded', function() {
+    const editor = document.getElementById('editor');
+    if (editor) {
+        editor.addEventListener('mousedown', function(e) {
+            // If clicking on a selected image (not the resize handle), start drag
+            if (e.target === selectedImg && !e.target.classList.contains('resize-handle')) {
+                startDrag(e);
+            }
+        });
+    }
+});
 
 /* ============================================================================
    9. TEMPLATE MANAGEMENT
@@ -1445,13 +1615,13 @@ function sendEmails() {
     updateSendButtonProgress(0, selectedEmails.length, 0, 0);
 
     if (sendMode === 'batch') {
-        console.log('Batch mode - addressMode:', batchAddressMode, 'batchSize:', batchSize);
+        console.log('Batch mode - addressMode:', batchAddressMode, 'batchSize:', batchSize, 'delayMs:', sendDelay);
         fetch('/api/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 subject, htmlContent, sendToAll: false, selectedEmails,
-                sendMode: 'batch', addressMode: batchAddressMode, batchSize
+                sendMode: 'batch', addressMode: batchAddressMode, batchSize, delayMs: sendDelay
             })
         })
         .then(r => {
@@ -1803,7 +1973,8 @@ function openImagePickerAndInsert(editor) {
 }
 
 /**
- * Inserts an image at the current caret position
+ * Inserts an image at the current caret position.
+ * Sets explicit pixel width for email compatibility.
  * @param {HTMLElement} editor - The editor element
  * @param {string} dataUrl - Base64 data URL of the image
  */
@@ -1811,9 +1982,24 @@ function insertImageAtCaret(editor, dataUrl) {
     if (!dataUrl) return;
 
     const img = document.createElement('img');
+
+    // Store original dimensions once image loads (needed for Outlook compatibility)
+    // Outlook ignores CSS and requires HTML width/height attributes
+    // IMPORTANT: Set onload BEFORE setting src to ensure it fires for cached/base64 images
+    img.onload = function() {
+        this.setAttribute('data-original-width', this.naturalWidth);
+        this.setAttribute('data-original-height', this.naturalHeight);
+    };
+
+    // Set src AFTER onload handler is attached
     img.src = dataUrl;
-    // Float for multi-line wrap + keep sizing safe
-    img.style.cssText = 'float:left; margin:0 15px 10px 0; max-width:40%; height:auto; display:block;';
+
+    // Calculate 40% of editor width as initial size
+    const editorWidth = editor.offsetWidth;
+    const targetWidth = Math.round(editorWidth * 0.4);
+
+    // Float for multi-line wrap + explicit pixel width for email compatibility
+    img.style.cssText = 'float:left; margin:0 15px 10px 0; width:' + targetWidth + 'px; height:auto; display:block;';
 
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -1846,7 +2032,7 @@ async function fileUrlToDataUrl(fileUrl) {
         // Browser security: fetch(file://) is often blocked.
         // We try, but if blocked we return null. Use the toolbar "Insert Image" button instead.
         let url = String(fileUrl || '');
-        url = url.replace(/\r|\n/g, '');
+        url = url.replace(/[\r\n]/g, '');
 
         const res = await fetch(url);
         if (!res.ok) return null;

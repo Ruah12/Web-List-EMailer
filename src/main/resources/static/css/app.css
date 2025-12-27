@@ -140,18 +140,37 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
    Images can be selected, resized, and positioned within the editor.
    ============================================================================ */
 
-/* Image base styles - responsive with selection indicator */
-.editor-container img { max-width: 100%; height: auto; cursor: pointer; border: 2px solid transparent; }
+/* Image base styles - no size limits, user can resize freely */
+.editor-container img { height: auto; cursor: pointer; border: 2px solid transparent; }
 
 /* Hover effect - dashed blue border indicates clickable */
 .editor-container img:hover { border: 2px dashed #007bff; }
 
-/* Selected state - solid blue border */
-.editor-container img.selected { border: 2px solid #007bff; }
-
 /* Resize handle - appears at corner of selected images
    Positioned with JavaScript, allows drag-to-resize */
 .resize-handle { position: fixed; width: 14px; height: 14px; background: #007bff; cursor: nwse-resize; border: 2px solid white; border-radius: 2px; z-index: 1000; }
+
+/* Dragging state - semi-transparent while being moved */
+.editor-container img.dragging { opacity: 0.5; cursor: move; }
+
+/* Selected image - show move cursor to indicate draggable */
+.editor-container img.selected { border: 2px solid #007bff; cursor: move; }
+
+/* Drop indicator - shows where image will be placed */
+.drop-indicator {
+    display: inline-block;
+    width: 3px;
+    height: 1.2em;
+    background: #007bff;
+    margin: 0 2px;
+    vertical-align: middle;
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
 
 /* ============================================================================
    5. RECIPIENTS LIST

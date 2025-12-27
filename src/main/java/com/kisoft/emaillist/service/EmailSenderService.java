@@ -10,10 +10,14 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -61,9 +65,6 @@ public class EmailSenderService {
     /** Spring JavaMail sender for SMTP communication */
     private final JavaMailSender mailSender;
 
-    /** Service for loading email list (used by sendToAll) */
-    private final EmailListService emailListService;
-
     /** From email address (configured in application.properties) */
     @Value("${mail.from}")
     private String fromEmail;
@@ -72,26 +73,29 @@ public class EmailSenderService {
     @Value("${mail.from.name:Email Sender}")
     private String fromName;
 
-    public SendResult sendToAll(String subject, String htmlContent) {
-        List<String> emailList = emailListService.loadEmailList();
-        return sendToEmails(emailList, subject, htmlContent);
-    }
-
-    public SendResult sendToSelected(List<String> emails, String subject, String htmlContent) {
-        return sendToEmails(emails, subject, htmlContent);
-    }
-
     /**
-     * Send emails in batch mode - can use To or BCC
+     * Sends emails in batch mode to multiple recipients per email.
+     *
+     * <p>Groups recipients into batches of the specified size and sends
+     * one email per batch. This is faster than individual sending but
+     * riskier (if one batch fails, all recipients in that batch fail).</p>
+     *
+     * @param emails List of all recipient email addresses
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @param batchSize Number of recipients per batch email
+     * @param useBcc If true, recipients go in BCC field; if false, in To field
+     * @param delayMs Delay in milliseconds between batch sends
+     * @return SendResult with success/failure counts and error details
      */
-    public SendResult sendBatch(List<String> emails, String subject, String htmlContent, int batchSize, boolean useBcc) {
+    public SendResult sendBatch(List<String> emails, String subject, String htmlContent, int batchSize, boolean useBcc, int delayMs) {
         int total = emails.size();
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
         List<String> failedEmails = new ArrayList<>();
         SendResult result = new SendResult(total, 0, 0, "", failedEmails);
 
-        log.info("sendBatch called: total={}, useBcc={}, batchSize={}", total, useBcc, batchSize);
+        log.info("sendBatch called: total={}, useBcc={}, batchSize={}, delayMs={}", total, useBcc, batchSize, delayMs);
 
         for (int i = 0; i < emails.size(); i += batchSize) {
             List<String> batch = emails.subList(i, Math.min(i + batchSize, emails.size()));
@@ -107,8 +111,8 @@ public class EmailSenderService {
                 successCount.addAndGet(batch.size());
                 log.info("Batch sent successfully to {} recipients using {}", batch.size(), useBcc ? "BCC" : "TO");
 
-                if (i + batchSize < emails.size()) {
-                    Thread.sleep(500);
+                if (i + batchSize < emails.size() && delayMs > 0) {
+                    Thread.sleep(delayMs);
                 }
             } catch (MessagingException | UnsupportedEncodingException e) {
                 failCount.addAndGet(batch.size());
@@ -136,7 +140,19 @@ public class EmailSenderService {
     }
 
     /**
-     * Send emails one by one - can use To or BCC
+     * Sends emails individually, one per recipient.
+     *
+     * <p>Sends a separate email to each recipient in the list. This is slower
+     * than batch mode but more reliable (one failure doesn't affect others).</p>
+     *
+     * <p>Includes a small delay (100ms) between sends to avoid overwhelming
+     * the mail server.</p>
+     *
+     * @param emails List of recipient email addresses
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @param useBcc If true, recipient goes in BCC field (sender in To); if false, recipient in To field
+     * @return SendResult with success/failure counts and error details
      */
     public SendResult sendIndividual(List<String> emails, String subject, String htmlContent, boolean useBcc) {
         int total = emails.size();
@@ -176,43 +192,18 @@ public class EmailSenderService {
         return result;
     }
 
-    private SendResult sendToEmails(List<String> emails, String subject, String htmlContent) {
-        int total = emails.size();
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger failCount = new AtomicInteger(0);
-        List<String> failedEmails = new ArrayList<>();
-        SendResult result = new SendResult(total, 0, 0, "", failedEmails);
-
-        log.info("Starting to send {} emails with subject: {}", total, subject);
-
-        for (String email : emails) {
-            try {
-                sendEmail(email, subject, htmlContent);
-                successCount.incrementAndGet();
-                log.info("Email sent successfully to: {}", email);
-                
-                // Small delay to avoid overwhelming the server
-                Thread.sleep(100);
-            } catch (Exception e) {
-                failCount.incrementAndGet();
-                failedEmails.add(email);
-                String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-                result.addErrorMessage(email, errorMsg);
-                log.error("Failed to send email to {}: {}", email, errorMsg);
-            }
-        }
-
-        String message = String.format("Sending complete. Success: %d, Failed: %d out of %d total",
-                successCount.get(), failCount.get(), total);
-        
-        log.info(message);
-        
-        result.setSuccessCount(successCount.get());
-        result.setFailCount(failCount.get());
-        result.setMessage(message);
-        return result;
-    }
-
+    /**
+     * Sends a single email to one recipient.
+     *
+     * <p>Creates a MIME message with HTML content and sends it via JavaMailSender.
+     * The HTML content is converted to email-safe format before sending.</p>
+     *
+     * @param to Recipient email address
+     * @param subject Email subject line
+     * @param htmlContent HTML body content (will be converted for email compatibility)
+     * @throws MessagingException If email creation or sending fails
+     * @throws UnsupportedEncodingException If character encoding fails
+     */
     private void sendEmail(String to, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -228,14 +219,19 @@ public class EmailSenderService {
     /**
      * Converts editor HTML into email-client-compatible HTML.
      *
-     * Problem this solves:
-     * - Browsers render CSS floats well, but many email clients (notably Outlook) ignore/limit floats.
-     * - Without conversion, an "image left + text right" layout often collapses to "image top, text bottom".
+     * <p>Problem this solves:</p>
+     * <ul>
+     *   <li>Browsers render CSS floats well, but many email clients (notably Outlook) ignore/limit floats</li>
+     *   <li>Without conversion, an "image left + text right" layout often collapses to "image top, text bottom"</li>
+     *   <li>Image dimensions from editor resize may not translate correctly to email</li>
+     * </ul>
      *
-     * Strategy:
-     * - ONLY convert floated images to table layout (preserves exact layout for non-floated content)
-     * - Use table-based layout for floated images to ensure side-by-side rendering in email clients
-     * - Preserve all other HTML exactly as-is
+     * <p>Strategy:</p>
+     * <ol>
+     *   <li>Convert floated images to table layout for side-by-side rendering</li>
+     *   <li>Normalize ALL images to ensure width is preserved and height:auto is used</li>
+     *   <li>Remove height attributes to prevent disproportionate scaling</li>
+     * </ol>
      */
     private String convertToEmailSafeHtml(String htmlContent) {
         if (htmlContent == null || htmlContent.isBlank()) {
@@ -245,17 +241,41 @@ public class EmailSenderService {
         Document doc = Jsoup.parseBodyFragment(htmlContent);
         Element body = doc.body();
 
+        // Debug: log where editor images are loaded from (src values).
+        // We intentionally sanitize/redact to avoid logging secrets (query strings) or large payloads (data URIs).
+        // NOTE: This logs the image *source references present in the editor HTML*.
+        // If the browser already converted local files to data:image/... the original local path is not available server-side.
+        if (log.isDebugEnabled()) {
+            for (Element img : body.select("img")) {
+                String src = img.attr("src");
+                if (src == null || src.isBlank()) {
+                    continue;
+                }
+                log.debug("Editor image source loaded from: {}", sanitizeImageSourceForLogs(src));
+            }
+        }
+
         // Convert white text to black for email (emails typically have white background)
         convertWhiteTextToBlack(body);
 
-        // Convert deprecated <font size="N"> tags to inline CSS font-size
-        // HTML font sizes 1-7 map to approximately: 12px (min), 13px, 16px, 18px, 24px, 32px, 48px
+        // Convert deprecated <font size="N"> tags to inline CSS font-size.
+        // We convert to explicit px so email clients (notably Outlook) render consistently.
         convertFontTagsToInlineStyles(body);
 
-        // Enforce minimum font size of 14px for Outlook compatibility
-        enforceMinimumFontSize(body, 14);
+        // Normalize all inline font-size declarations to px (including pt -> px)
+        // to reduce browser-vs-Outlook differences.
+        normalizeInlineFontSizesToPx(body);
 
-        // ONLY process images that have float:left style (intended side-by-side layout)
+        // Normalize line-height to px + add Outlook-specific rule. This prevents Outlook from
+        // re-interpreting unitless line-height differently than the browser preview.
+        normalizeLineHeightsForOutlook(body);
+
+        // Enforce minimum font size for Outlook compatibility.
+        // Outlook cannot render font sizes below ~10px readably (8px appears invisible).
+        // This applies to both <font size="1"> conversions AND inline CSS font-size styles.
+        enforceMinimumFontSize(body, 10);
+
+        // STEP 1: Identify floated images for table conversion
         java.util.List<Element> floatedImages = new java.util.ArrayList<>();
         for (Element img : body.select("img")) {
             String style = img.attr("style");
@@ -265,8 +285,9 @@ public class EmailSenderService {
         }
 
         for (Element img : floatedImages) {
-            // Skip if already inside a table (already processed)
-            if (img.parents().is("table")) {
+            // Skip if already inside a presentation table (one we created for layout)
+            // Don't skip images in content tables (user's original tables)
+            if (isInsidePresentationTable(img)) {
                 continue;
             }
 
@@ -275,13 +296,12 @@ public class EmailSenderService {
             Element imgParent = img.parent();
 
             // Strategy 1: Image is direct child of body or a block element
-            // Collect all following siblings until we hit another floated image or end
+            // Collect all following siblings until we hit ANY image or end
             Node cursor = img.nextSibling();
             while (cursor != null) {
-                // Stop at another floated image
-                if (cursor instanceof Element el && el.tagName().equalsIgnoreCase("img")) {
-                    String s = el.attr("style");
-                    if (isSideBySideImage(s, el)) {
+                // Stop at ANY image (not just floated ones)
+                if (cursor instanceof Element el) {
+                    if (el.tagName().equalsIgnoreCase("img") || !el.select("img").isEmpty()) {
                         break;
                     }
                 }
@@ -294,15 +314,8 @@ public class EmailSenderService {
             if (imgParent != null && !imgParent.tagName().equalsIgnoreCase("body")) {
                 Element siblingEl = imgParent.nextElementSibling();
                 while (siblingEl != null) {
-                    // Stop if this sibling contains a floated image
-                    boolean hasFloatedImg = false;
-                    for (Element sibImg : siblingEl.select("img")) {
-                        if (isSideBySideImage(sibImg.attr("style"), sibImg)) {
-                            hasFloatedImg = true;
-                            break;
-                        }
-                    }
-                    if (hasFloatedImg) {
+                    // Stop if this sibling contains ANY image (not just floated ones)
+                    if (!siblingEl.select("img").isEmpty()) {
                         break;
                     }
                     textNodes.add(siblingEl.clone());
@@ -314,6 +327,8 @@ public class EmailSenderService {
 
             // Build table layout if we have content
             int imgWidthPx = pickImageWidthPx(img);
+            log.info("Processing floated image: style='{}', width attr='{}', calculated width={}",
+                img.attr("style"), img.attr("width"), imgWidthPx);
 
             if (!textNodes.isEmpty()) {
                 Element table = buildTwoColumnEmailLayout(img, textNodes, imgWidthPx);
@@ -333,9 +348,31 @@ public class EmailSenderService {
                 }
             } else {
                 // No adjacent text - just normalize the image for standalone display
-                img.attr("style", normalizeImgStyleForEmail(img.attr("style")));
-                img.removeAttr("height"); // Remove explicit height for proportional scaling
+                // Use the already-calculated imgWidthPx from above
+                img.attr("style", normalizeImgStyleForEmail(img.attr("style"), img));
+                img.attr("width", String.valueOf(imgWidthPx));
+                // Set proportional height for Outlook compatibility (decodes base64 if needed)
+                setProportionalHeight(img, imgWidthPx);
             }
+        }
+
+        // STEP 2: Normalize ALL remaining images (non-floated) for consistent sizing
+        // This ensures any image the user resized in the editor displays at the same size in email
+        for (Element remainingImg : body.select("img")) {
+            // Skip images already inside presentation tables (ones we created for layout)
+            // Don't skip images in content tables (user's original tables)
+            if (isInsidePresentationTable(remainingImg)) {
+                continue;
+            }
+
+            // Get the user-specified width and normalize the image
+            int remainingImgWidth = pickImageWidthPx(remainingImg);
+            log.info("Processing non-floated image: style='{}', width attr='{}', calculated width={}",
+                remainingImg.attr("style"), remainingImg.attr("width"), remainingImgWidth);
+            remainingImg.attr("style", normalizeImgStyleForEmail(remainingImg.attr("style"), remainingImg));
+            remainingImg.attr("width", String.valueOf(remainingImgWidth));
+            // Set proportional height for Outlook compatibility (decodes base64 if needed)
+            setProportionalHeight(remainingImg, remainingImgWidth);
         }
 
         inlineParagraphDefaults(body);
@@ -343,20 +380,74 @@ public class EmailSenderService {
         return wrapInEmailTemplate(body.html());
     }
 
-    private static boolean isAnotherImage(Element el) {
-        if (el.tagName().equalsIgnoreCase("img")) {
-            return true;
+    /**
+     * Normalizes inline font-size declarations to px.
+     *
+     * <p>Why: Browsers and Outlook (Word engine) differ in how they interpret pt/px and how they round.
+     * Converting everything to px makes sizing more deterministic and helps match the editor preview.</p>
+     *
+     * <p>Supported inputs:</p>
+     * <ul>
+     *   <li>font-size: 12px</li>
+     *   <li>font-size: 9pt (converted to ~12px)</li>
+     * </ul>
+     *
+     * <p>Note: We keep only integer px sizes because that's the most compatible form for email clients.</p>
+     */
+    private static void normalizeInlineFontSizesToPx(Element body) {
+        java.util.regex.Pattern fontSizePattern = java.util.regex.Pattern.compile(
+            "(?i)font-size\\s*:\\s*(\\d+(?:\\.\\d+)?)(px|pt)"
+        );
+
+        for (Element el : body.select("[style*=font-size]")) {
+            String style = el.attr("style");
+            if (style == null || style.isBlank()) {
+                continue;
+            }
+
+            java.util.regex.Matcher matcher = fontSizePattern.matcher(style);
+            StringBuffer newStyle = new StringBuffer();
+
+            while (matcher.find()) {
+                double sizeValue = Double.parseDouble(matcher.group(1));
+                String unit = matcher.group(2).toLowerCase();
+
+                // Convert pt to px (1pt ~= 1.333px). Keep px verbatim.
+                double sizeInPx = unit.equals("pt") ? sizeValue * 1.333 : sizeValue;
+                int px = (int) Math.round(sizeInPx);
+
+                matcher.appendReplacement(newStyle, "font-size:" + px + "px");
+            }
+            matcher.appendTail(newStyle);
+
+            el.attr("style", newStyle.toString());
         }
-        // Also check if this element contains a floated image
-        for (Element img : el.select("img")) {
-            String style = img.attr("style");
-            if (isSideBySideImage(style, img)) {
+    }
+
+    /**
+     * Checks if an image is inside a presentation table (one we created for email layout).
+     * We mark our tables with role="presentation" to distinguish them from content tables.
+     */
+    private static boolean isInsidePresentationTable(Element img) {
+        for (Element parent : img.parents()) {
+            if (parent.tagName().equalsIgnoreCase("table")
+                && "presentation".equals(parent.attr("role"))) {
                 return true;
             }
         }
         return false;
     }
 
+    /**
+     * Determines if an image should be converted to side-by-side table layout.
+     *
+     * <p>Checks for float:left style or width+margin combination that indicates
+     * the image was intended to have text wrap beside it.</p>
+     *
+     * @param style The image's CSS style string
+     * @param img The image element
+     * @return true if the image should be converted to table layout
+     */
     private static boolean isSideBySideImage(String style, Element img) {
         String s = style == null ? "" : style.toLowerCase();
 
@@ -372,6 +463,19 @@ public class EmailSenderService {
         return hasWidth && hasMarginRight;
     }
 
+    /**
+     * Extracts the width in pixels from an image element.
+     *
+     * <p>Priority order:</p>
+     * <ol>
+     *   <li>Inline style width: Npx first (this is set when user resizes in editor)</li>
+     *   <li>HTML width attribute</li>
+     *   <li>Default of 260px (approximately 40% of typical editor width)</li>
+     * </ol>
+     *
+     * @param img The image element
+     * @return Width in pixels
+     */
     private static int pickImageWidthPx(Element img) {
         // Try inline style width: Npx first (this is set when user resizes in editor)
         String style = img.attr("style");
@@ -397,6 +501,14 @@ public class EmailSenderService {
         return 260;
     }
 
+    /**
+     * Parses the leading integer from a string value.
+     *
+     * <p>Handles values like "150px" by extracting just "150".</p>
+     *
+     * @param value String that may contain a number
+     * @return The parsed integer, or null if parsing fails
+     */
     private static Integer tryParseLeadingInt(String value) {
         if (value == null) return null;
         String v = value.trim();
@@ -408,10 +520,25 @@ public class EmailSenderService {
         }
     }
 
-    private static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
+    /**
+     * Builds a two-column table layout for an image and adjacent text.
+     *
+     * <p>This creates an email-compatible table structure that ensures the image
+     * appears on the left and text on the right, which works in all email clients
+     * including Outlook.</p>
+     *
+     * <p>CRITICAL: Image dimensions are handled carefully:</p>
+     * <ul>
+     *   <li>Width is set from user's resize operation (preserving exact size)</li>
+     *   <li>Height is NEVER set as an attribute - only height:auto in style</li>
+     *   <li>This ensures proportional scaling in all email clients</li>
+     * </ul>
+     *
+     * @param img The original image element
+     * @param textNodes The text nodes to place in the right column
+     * @param imgWidthPx The width in pixels for the image
+     * @return A table element with the two-column layout
+     */
     private static Element buildTwoColumnEmailLayout(Element img, java.util.List<Node> textNodes, int imgWidthPx) {
         // Use 100% width so content flows based on email client window size
         // Do NOT use fixed width - let email client determine the width
@@ -440,10 +567,32 @@ public class EmailSenderService {
         tdText.attr("style", "vertical-align:top; text-align:left; mso-table-lspace:0pt; mso-table-rspace:0pt;");
 
         Element imgClone = img.clone();
-        imgClone.attr("style", normalizeImgStyleForEmail(imgClone.attr("style")));
+
+        // CRITICAL: Use enhanced normalization that preserves width and forces height:auto
+        imgClone.attr("style", normalizeImgStyleForEmail(imgClone.attr("style"), imgClone));
         imgClone.attr("border", "0");
         imgClone.attr("width", String.valueOf(imgWidthPx));
-        imgClone.removeAttr("height"); // Remove explicit height to ensure proportional scaling
+
+        // Set proportional height for Outlook compatibility (decodes base64 if needed)
+        // Note: Use original img for data attributes, but set on imgClone
+        Integer originalWidth = tryParseLeadingInt(img.attr("data-original-width"));
+        Integer originalHeight = tryParseLeadingInt(img.attr("data-original-height"));
+        if (originalWidth == null || originalHeight == null || originalWidth <= 0) {
+            int[] dimensions = getImageDimensionsFromDataUrl(img.attr("src"));
+            if (dimensions != null) {
+                originalWidth = dimensions[0];
+                originalHeight = dimensions[1];
+            }
+        }
+        if (originalWidth != null && originalHeight != null && originalWidth > 0) {
+            int calculatedHeight = (imgWidthPx * originalHeight) / originalWidth;
+            imgClone.attr("height", String.valueOf(calculatedHeight));
+        } else {
+            imgClone.removeAttr("height");
+        }
+        // Clean up data attributes from email output
+        imgClone.removeAttr("data-original-width");
+        imgClone.removeAttr("data-original-height");
 
         tdImg.appendChild(imgClone);
 
@@ -469,45 +618,442 @@ public class EmailSenderService {
     }
 
     /**
-     * Enforces a minimum font size for all text in the email.
-     * This ensures text is visible in email clients that may have minimum rendering sizes.
+     * Converts deprecated HTML font tags to inline CSS styles.
      *
-     * @param body The document body element
-     * @param minPx The minimum font size in pixels (e.g., 12)
+     * <p>The browser editor may still emit <code>&lt;font size="1..7"&gt;</code> via execCommand.
+     * Email clients (especially Outlook) handle these inconsistently, so we normalize to explicit
+     * pixel sizes.</p>
+     *
+     * <p>IMPORTANT: Outlook has a minimum readable font size of approximately 10-11px.
+     * Font size 8px renders as invisible/unreadable in Outlook. We map size 1 to 10px
+     * (smallest Outlook-readable size) to ensure text is always visible.</p>
+     */
+    private static void convertFontTagsToInlineStyles(Element body) {
+        // Map HTML font size attribute (1-7) to CSS pixel sizes.
+        // Size 1 maps to 10px (not 8px) because Outlook cannot render 8px text readably.
+        // Size 2 maps to 11px as a small-but-readable size.
+        java.util.Map<String, String> fontSizeMap = java.util.Map.of(
+            "1", "10px",  // Smallest Outlook-readable size (8px is invisible in Outlook)
+            "2", "11px",  // Small but readable
+            "3", "12px",
+            "4", "14px",
+            "5", "18px",
+            "6", "24px",
+            "7", "36px"
+        );
+
+        for (Element font : body.select("font[size]")) {
+            String sizeAttr = font.attr("size");
+            String pxSize = fontSizeMap.getOrDefault(sizeAttr, "14px");
+
+            StringBuilder style = new StringBuilder();
+            style.append("font-size:").append(pxSize).append(";");
+
+            String color = font.attr("color");
+            if (color != null && !color.isBlank()) {
+                style.append("color:").append(color).append(";");
+            }
+
+            String face = font.attr("face");
+            if (face != null && !face.isBlank()) {
+                style.append("font-family:").append(face).append(";");
+            }
+
+            String existingStyle = font.attr("style");
+            if (existingStyle != null && !existingStyle.isBlank()) {
+                style.append(existingStyle);
+            }
+
+            // Use outerHtml replacement to preserve surrounding whitespace
+            // JSoup's replaceWith can strip adjacent text nodes' spaces
+            font.tagName("span");
+            font.removeAttr("size");
+            font.removeAttr("color");
+            font.removeAttr("face");
+            font.attr("style", style.toString());
+        }
+
+        // Also handle font tags with only color or face (no size)
+        for (Element font : body.select("font:not([size])")) {
+            StringBuilder style = new StringBuilder();
+
+            String color = font.attr("color");
+            if (color != null && !color.isBlank()) {
+                style.append("color:").append(color).append(";");
+            }
+
+            String face = font.attr("face");
+            if (face != null && !face.isBlank()) {
+                style.append("font-family:").append(face).append(";");
+            }
+
+            if (!style.isEmpty()) {
+                String existingStyle = font.attr("style");
+                if (existingStyle != null && !existingStyle.isBlank()) {
+                    style.append(existingStyle);
+                }
+
+                // Rename tag in place to preserve whitespace
+                font.tagName("span");
+                font.removeAttr("color");
+                font.removeAttr("face");
+                font.attr("style", style.toString());
+            }
+        }
+    }
+
+    /**
+     * Enforces a minimum font size on all elements with inline font-size styles.
+     *
+     * <p>Outlook and some other email clients cannot render very small font sizes (below ~10px)
+     * readably. Font size 8px often appears invisible or as tiny dots. This method scans all
+     * elements with inline font-size CSS and upgrades any size below the minimum to the minimum.</p>
+     *
+     * <p>Handles both px and pt units. For pt, we convert to px equivalent (1pt ≈ 1.333px)
+     * before comparison.</p>
+     *
+     * @param body The HTML body element to process
+     * @param minPx The minimum font size in pixels (typically 10 for Outlook compatibility)
      */
     private static void enforceMinimumFontSize(Element body, int minPx) {
-        // Find all elements with font-size in style attribute
+        // Pattern to match font-size declarations: font-size: Npx or font-size: Npt
+        java.util.regex.Pattern fontSizePattern = java.util.regex.Pattern.compile(
+            "(?i)font-size\\s*:\\s*(\\d+(?:\\.\\d+)?)(px|pt)"
+        );
+
         for (Element el : body.select("[style*=font-size]")) {
             String style = el.attr("style");
             if (style == null || style.isBlank()) continue;
 
-            // Extract font-size value
-            java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("(?i)font-size\\s*:\\s*(\\d+)(px|pt)?")
-                .matcher(style);
+            java.util.regex.Matcher matcher = fontSizePattern.matcher(style);
+            StringBuffer newStyle = new StringBuffer();
 
-            if (m.find()) {
-                try {
-                    int size = Integer.parseInt(m.group(1));
-                    String unit = m.group(2);
+            while (matcher.find()) {
+                double sizeValue = Double.parseDouble(matcher.group(1));
+                String unit = matcher.group(2).toLowerCase();
 
-                    // Convert pt to px (approximately 1pt = 1.33px)
-                    if ("pt".equalsIgnoreCase(unit)) {
-                        size = (int) Math.round(size * 1.33);
-                    }
+                // Convert pt to px for comparison (1pt ≈ 1.333px)
+                double sizeInPx = unit.equals("pt") ? sizeValue * 1.333 : sizeValue;
 
-                    // If font size is below minimum, replace with minimum
-                    if (size < minPx) {
-                        String newStyle = style.replaceAll(
-                            "(?i)font-size\\s*:\\s*\\d+(px|pt)?",
-                            "font-size:" + minPx + "px"
-                        );
-                        el.attr("style", newStyle);
-                    }
-                } catch (NumberFormatException e) {
-                    // Ignore non-numeric font sizes
+                if (sizeInPx < minPx) {
+                    // Replace with minimum size in px
+                    matcher.appendReplacement(newStyle, "font-size:" + minPx + "px");
+                } else {
+                    // Keep original
+                    matcher.appendReplacement(newStyle, matcher.group(0));
                 }
             }
+            matcher.appendTail(newStyle);
+
+            el.attr("style", newStyle.toString());
+        }
+    }
+
+    /**
+     * Inline paragraph styles for better email client compatibility.
+     * Many email clients strip or ignore CSS, so inline styles are more reliable.
+     *
+     * <p>We intentionally do NOT inject a default font-size here.
+     * The email template already provides a base font-size on the body.
+     * Injecting a font-size at every element breaks mixed font-size content.</p>
+     */
+    private static void inlineParagraphDefaults(Element body) {
+        // Paragraphs: add margin/padding defaults only
+        for (Element p : body.select("p")) {
+            String existingStyle = p.attr("style");
+            if (existingStyle == null || existingStyle.isBlank()) {
+                p.attr("style", "margin:0 0 10px 0; padding:0;");
+            } else {
+                StringBuilder newStyle = new StringBuilder(existingStyle);
+                if (!existingStyle.toLowerCase().contains("margin")) {
+                    newStyle.append("; margin:0 0 10px 0;");
+                }
+                if (!existingStyle.toLowerCase().contains("padding")) {
+                    newStyle.append("; padding:0;");
+                }
+                p.attr("style", newStyle.toString());
+            }
+        }
+
+        // Divs: normalize margin/padding only
+        for (Element div : body.select("div")) {
+            String existingStyle = div.attr("style");
+            if (existingStyle == null || existingStyle.isBlank()) {
+                div.attr("style", "margin:0; padding:0;");
+            } else {
+                StringBuilder newStyle = new StringBuilder(existingStyle);
+                if (!existingStyle.toLowerCase().contains("margin")) {
+                    newStyle.append("; margin:0;");
+                }
+                if (!existingStyle.toLowerCase().contains("padding")) {
+                    newStyle.append("; padding:0;");
+                }
+                div.attr("style", newStyle.toString());
+            }
+        }
+
+        // Spans: do not inject defaults (spans should be as-authored)
+
+        // Table cells: do not inject font-size; Outlook respects inherited font-size from body.
+    }
+
+    /**
+     * Normalizes image styles for email compatibility.
+     *
+     * <p>This method ensures images display correctly in email clients by:</p>
+     * <ul>
+     *   <li>Removing float (tables handle positioning)</li>
+     *   <li>Preserving user-specified width from resize</li>
+     *   <li>Forcing height:auto for proportional scaling</li>
+     *   <li>Adding email-compatible display properties</li>
+     * </ul>
+     *
+     * @param originalStyle The original CSS style string from the image
+     * @param img The image element (to extract width attribute if needed)
+     * @return Normalized style string for email
+     */
+    private static String normalizeImgStyleForEmail(String originalStyle, Element img) {
+        String style = originalStyle == null ? "" : originalStyle;
+
+        // Remove float:left - we use tables instead for email compatibility
+        style = style.replaceAll("(?i)float\\s*:\\s*left\\s*;?", "");
+
+        // Remove max-width percentage patterns (40%, etc.) - these don't work well in email
+        style = style.replaceAll("(?i)max-width\\s*:\\s*\\d+%\\s*;?", "");
+
+        // REMOVE any explicit height value - we will force height:auto for proportional scaling
+        style = style.replaceAll("(?i)height\\s*:\\s*[^;]+;?", "");
+
+        // Extract the width value to ensure it's preserved correctly
+        Integer widthPx = extractWidthFromStyle(style);
+        if (widthPx == null && img != null) {
+            widthPx = tryParseLeadingInt(img.attr("width"));
+        }
+
+        // Remove existing width from style (we'll re-add it properly)
+        style = style.replaceAll("(?i)width\\s*:\\s*[^;]+;?", "");
+
+        // Build clean style string
+        StringBuilder cleanStyle = new StringBuilder();
+
+        // Always force height:auto for proportional scaling - this is CRITICAL
+        cleanStyle.append("height:auto !important; ");
+
+        // Add width if we have one
+        if (widthPx != null && widthPx > 0) {
+            cleanStyle.append("width:").append(widthPx).append("px; ");
+        }
+
+        cleanStyle.append("max-width:100%; ");
+        cleanStyle.append("display:block; ");
+
+        // Append any remaining original styles (colors, borders, etc.)
+        String remaining = style.replaceAll("\\s+", " ").trim();
+        if (!remaining.isEmpty()) {
+            cleanStyle.append(remaining);
+        }
+
+        return cleanStyle.toString().trim();
+    }
+
+    /**
+     * Extracts width in pixels from a CSS style string.
+     *
+     * @param style CSS style string
+     * @return Width in pixels, or null if not found
+     */
+    private static Integer extractWidthFromStyle(String style) {
+        if (style == null || style.isBlank()) return null;
+
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("(?i)width\\s*:\\s*(\\d+)px")
+            .matcher(style);
+        if (m.find()) {
+            return tryParseLeadingInt(m.group(1));
+        }
+        return null;
+    }
+
+    /**
+     * Wraps content in a complete HTML email template.
+     *
+     * <p>Creates a full HTML document with:</p>
+     * <ul>
+     *   <li>Proper DOCTYPE and XML namespaces for Outlook</li>
+     *   <li>MSO conditional comments for Outlook-specific styles</li>
+     *   <li>Base font settings (Arial, 14px, 1.5 line-height)</li>
+     *   <li>Reset styles for consistent rendering</li>
+     * </ul>
+     *
+     * @param content The HTML body content to wrap
+     * @return Complete HTML document string
+     */
+    private String wrapInEmailTemplate(String content) {
+        // Outlook renders HTML using the Word engine and is sensitive to where typography is applied.
+        // Applying base styles on an outer container TABLE/TD tends to be more consistent than relying
+        // on <body> inheritance alone.
+        return """
+            <!DOCTYPE html>
+            <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="x-apple-disable-message-reformatting">
+                <!--[if mso]>
+                <noscript>
+                <xml>
+                <o:OfficeDocumentSettings>
+                  <o:PixelsPerInch>96</o:PixelsPerInch>
+                </o:OfficeDocumentSettings>
+                </xml>
+                </noscript>
+                <style>
+                  table {border-collapse: collapse;}
+                  td {vertical-align: top;}
+                </style>
+                <![endif]-->
+            </head>
+            <body style="margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; background:#ffffff;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; width:100%; background:#ffffff;">
+                <tr>
+                  <td align="left" valign="top" style="vertical-align:top; text-align:left; font-family: Calibri, Arial, sans-serif; font-size:14px; line-height:1.5; mso-line-height-rule:exactly; color:#000000;">
+            """ + content + """
+                  </td>
+                </tr>
+              </table>
+            </body>
+            </html>
+            """;
+    }
+
+    /**
+     * Sends a single email with the recipient in the BCC field.
+     *
+     * <p>The sender's email address is placed in the To field, and the actual
+     * recipient is placed in BCC. This hides the recipient from the email headers.</p>
+     *
+     * @param recipient Recipient email address (placed in BCC)
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @throws MessagingException If email creation or sending fails
+     * @throws UnsupportedEncodingException If character encoding fails
+     */
+    private void sendEmailWithBccSingle(String recipient, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(fromEmail); // Send to self
+        helper.setBcc(recipient); // Actual recipient in BCC
+        helper.setSubject(subject);
+        helper.setText(convertToEmailSafeHtml(htmlContent), true);
+
+        mailSender.send(message);
+    }
+
+    /**
+     * Sends an email to multiple recipients using the To field.
+     *
+     * <p>All recipients are visible to each other in the email headers.
+     * Used for batch sending when recipients should see who else received the email.</p>
+     *
+     * @param recipients List of recipient email addresses
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @throws MessagingException If email creation or sending fails
+     * @throws UnsupportedEncodingException If character encoding fails
+     */
+    private void sendEmailWithMultipleTo(List<String> recipients, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
+        if (recipients == null || recipients.isEmpty()) {
+            return;
+        }
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(fromEmail, fromName);
+        helper.setTo(recipients.toArray(new String[0]));
+        helper.setSubject(subject);
+        helper.setText(convertToEmailSafeHtml(htmlContent), true);
+
+        mailSender.send(message);
+    }
+
+    /**
+     * Sends an email to multiple recipients using the BCC field.
+     *
+     * <p>All recipients are hidden from each other. The sender's email address
+     * is placed in the To field (commented out in current implementation).
+     * This is the recommended mode for mass emails to protect recipient privacy.</p>
+     *
+     * @param recipients List of recipient email addresses (placed in BCC)
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @throws MessagingException If email creation or sending fails
+     * @throws UnsupportedEncodingException If character encoding fails
+     */
+    private void sendEmailWithBcc(List<String> recipients, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
+        if (recipients == null || recipients.isEmpty()) {
+            return;
+        }
+
+        log.info("sendEmailWithBcc: Sending to {} recipients via BCC, To field will be: {}", recipients.size(), fromEmail);
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(fromEmail, fromName);
+        //helper.setTo(fromEmail); // Send to self
+        helper.setBcc(recipients.toArray(new String[0])); // All recipients in BCC
+
+        log.info("sendEmailWithBcc: BCC recipients set to: {}", recipients);
+
+        helper.setSubject(subject);
+        helper.setText(convertToEmailSafeHtml(htmlContent), true);
+
+        mailSender.send(message);
+        log.info("sendEmailWithBcc: Email sent successfully via BCC");
+    }
+
+    /**
+     * Tests the connection to the mail server.
+     *
+     * <p>Attempts to create a MIME message using the configured JavaMailSender.
+     * If successful, the mail server connection is working. This is called
+     * periodically by the UI to update the connection status badge.</p>
+     *
+     * @return true if connection is successful, false otherwise
+     */
+    public boolean testConnection() {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            // Just creating a message tests the connection
+            return true;
+        } catch (Exception e) {
+            log.error("Mail server connection test failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Sends a test email to verify email functionality.
+     *
+     * <p>Used by the "Send Test" button in the UI to verify that emails
+     * can be sent successfully before sending to the full recipient list.</p>
+     *
+     * @param to Test recipient email address
+     * @param subject Email subject line
+     * @param htmlContent HTML body content
+     * @throws Exception If email sending fails
+     */
+    public void sendTestEmail(String to, String subject, String htmlContent) throws Exception {
+        try {
+            sendEmail(to, subject, htmlContent);
+            log.info("Test email sent successfully to: {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send test email: {}", e.getMessage());
+            throw e;
         }
     }
 
@@ -554,303 +1100,195 @@ public class EmailSenderService {
     }
 
     /**
-     * Converts deprecated HTML font tags to inline CSS styles.
-     * The execCommand('fontSize') uses font size values 1-7 which map to:
-     * 1=12px (minimum), 2=13px, 3=16px, 4=18px, 5=24px, 6=32px, 7=48px
-     * Email clients handle these inconsistently, so we convert to explicit px values.
-     * Minimum font size is 14px to ensure visibility in all email clients including MS Outlook.
+     * Extracts image dimensions from a base64 data URL.
+     * Returns an int array [width, height] or null if extraction fails.
+     *
+     * @param src The image src attribute (expected to be a data URL)
+     * @return int array [width, height] or null if extraction fails
      */
-    private static void convertFontTagsToInlineStyles(Element body) {
-        // Map HTML font size attribute (1-7) to CSS pixel sizes
-        // Sizes 1-3 map to 14px minimum for Outlook compatibility
-        // Dropdown shows: 14(3), 16(4), 18(5), 24(6), 36(7)
-        java.util.Map<String, String> fontSizeMap = java.util.Map.of(
-            "1", "14px",  // Minimum 14px for Outlook compatibility
-            "2", "14px",  // Minimum 14px for Outlook compatibility
-            "3", "14px",  // 14px - matches dropdown
-            "4", "16px",  // 16px - matches dropdown
-            "5", "18px",  // 18px - matches dropdown
-            "6", "24px",  // 24px - matches dropdown
-            "7", "36px"   // 36px - matches dropdown
+    private static int[] getImageDimensionsFromDataUrl(String src) {
+        if (src == null || !src.startsWith("data:image")) {
+            return null;
+        }
+        try {
+            int commaIndex = src.indexOf(',');
+            if (commaIndex < 0) {
+                return null;
+            }
+            String base64Data = src.substring(commaIndex + 1);
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            if (bufferedImage == null) {
+                return null;
+            }
+            return new int[] { bufferedImage.getWidth(), bufferedImage.getHeight() };
+        } catch (Exception e) {
+            // Log but don't fail - we'll just skip setting height
+            return null;
+        }
+    }
+
+    /**
+     * Sets the height attribute on an image element based on the target width and original dimensions.
+     * This is critical for Outlook compatibility, which ignores CSS and requires HTML attributes.
+     *
+     * @param imgElement The image element to update
+     * @param targetWidth The target width in pixels
+     */
+    private static void setProportionalHeight(Element imgElement, int targetWidth) {
+        // First try to get dimensions from data attributes (set by JavaScript)
+        Integer originalWidth = tryParseLeadingInt(imgElement.attr("data-original-width"));
+        Integer originalHeight = tryParseLeadingInt(imgElement.attr("data-original-height"));
+
+        // Fallback: decode base64 image to get dimensions
+        if (originalWidth == null || originalHeight == null || originalWidth <= 0) {
+            int[] dimensions = getImageDimensionsFromDataUrl(imgElement.attr("src"));
+            if (dimensions != null) {
+                originalWidth = dimensions[0];
+                originalHeight = dimensions[1];
+            }
+        }
+
+        // Calculate and set proportional height
+        if (originalWidth != null && originalHeight != null && originalWidth > 0) {
+            int calculatedHeight = (targetWidth * originalHeight) / originalWidth;
+            imgElement.attr("height", String.valueOf(calculatedHeight));
+        } else {
+            imgElement.removeAttr("height");
+        }
+
+        // Clean up data attributes from email output
+        imgElement.removeAttr("data-original-width");
+        imgElement.removeAttr("data-original-height");
+    }
+
+    /**
+     * Normalizes inline line-height declarations to explicit px and adds
+     * Outlook-specific "mso-line-height-rule:exactly".
+     *
+     * <p>Outlook (Word engine) can interpret unitless line-height differently from browsers.
+     * For the closest match to the editor, we rewrite line-height to px based on the element's
+     * font-size (inline or inherited default 14px from the email wrapper).</p>
+     */
+    private static void normalizeLineHeightsForOutlook(Element body) {
+        // Matches: line-height: 1.5 | line-height: 20px | line-height: 1.2em
+        java.util.regex.Pattern lineHeightPattern = java.util.regex.Pattern.compile(
+            "(?i)line-height\\s*:\\s*(\\d+(?:\\.\\d+)?)(px|em)?"
+        );
+        java.util.regex.Pattern fontSizePattern = java.util.regex.Pattern.compile(
+            "(?i)font-size\\s*:\\s*(\\d+)(px)"
         );
 
-        for (Element font : body.select("font[size]")) {
-            String sizeAttr = font.attr("size");
-            String pxSize = fontSizeMap.getOrDefault(sizeAttr, "14px");
-
-            // Build inline style
-            StringBuilder style = new StringBuilder();
-            style.append("font-size:").append(pxSize).append(";");
-
-            // Preserve color attribute if present
-            String color = font.attr("color");
-            if (color != null && !color.isBlank()) {
-                style.append("color:").append(color).append(";");
+        for (Element el : body.select("[style*=line-height]")) {
+            String style = el.attr("style");
+            if (style == null || style.isBlank()) {
+                continue;
             }
 
-            // Preserve face (font-family) attribute if present
-            String face = font.attr("face");
-            if (face != null && !face.isBlank()) {
-                style.append("font-family:").append(face).append(";");
+            java.util.regex.Matcher lh = lineHeightPattern.matcher(style);
+            if (!lh.find()) {
+                continue;
             }
 
-            // Merge with existing style if any
-            String existingStyle = font.attr("style");
-            if (existingStyle != null && !existingStyle.isBlank()) {
-                style.append(existingStyle);
-            }
+            double lhValue = Double.parseDouble(lh.group(1));
+            String lhUnit = lh.group(2) == null ? "" : lh.group(2).toLowerCase();
 
-            // Replace <font> with <span> for better compatibility
-            Element span = new Element("span");
-            span.attr("style", style.toString());
-            span.html(font.html());
-            font.replaceWith(span);
-        }
-
-        // Also handle font tags with only color or face (no size)
-        for (Element font : body.select("font:not([size])")) {
-            StringBuilder style = new StringBuilder();
-
-            String color = font.attr("color");
-            if (color != null && !color.isBlank()) {
-                style.append("color:").append(color).append(";");
-            }
-
-            String face = font.attr("face");
-            if (face != null && !face.isBlank()) {
-                style.append("font-family:").append(face).append(";");
-            }
-
-            if (style.length() > 0) {
-                String existingStyle = font.attr("style");
-                if (existingStyle != null && !existingStyle.isBlank()) {
-                    style.append(existingStyle);
+            // Determine font-size in px for this element. Prefer inline font-size; fallback to 14.
+            int fontPx = 14;
+            java.util.regex.Matcher fs = fontSizePattern.matcher(style);
+            if (fs.find()) {
+                try {
+                    fontPx = Integer.parseInt(fs.group(1));
+                } catch (NumberFormatException ignored) {
+                    fontPx = 14;
                 }
-
-                Element span = new Element("span");
-                span.attr("style", style.toString());
-                span.html(font.html());
-                font.replaceWith(span);
             }
-        }
-    }
 
-    /**
-     * Inline paragraph styles for better email client compatibility.
-     * Many email clients strip or ignore CSS, so inline styles are more reliable.
-     * Text wrapping is handled by the email client based on window size.
-     */
-    private static void inlineParagraphDefaults(Element body) {
-        // Add inline styles to paragraphs - margin/padding AND font-size for Outlook
-        for (Element p : body.select("p")) {
-            String existingStyle = p.attr("style");
-            if (existingStyle == null || existingStyle.isBlank()) {
-                p.attr("style", "margin:0 0 10px 0; padding:0; font-size:14px;");
+            int linePx;
+            if ("px".equals(lhUnit)) {
+                linePx = (int) Math.round(lhValue);
+            } else if ("em".equals(lhUnit)) {
+                linePx = (int) Math.round(lhValue * fontPx);
             } else {
-                StringBuilder newStyle = new StringBuilder(existingStyle);
-                if (!existingStyle.toLowerCase().contains("margin")) {
-                    newStyle.append("; margin:0 0 10px 0;");
-                }
-                if (!existingStyle.toLowerCase().contains("font-size")) {
-                    newStyle.append("; font-size:14px;");
-                }
-                p.attr("style", newStyle.toString());
+                // Unitless: treat as multiplier (CSS spec). Convert to px.
+                linePx = (int) Math.round(lhValue * fontPx);
             }
-        }
 
-        // Add inline styles to divs - margin/padding AND font-size for Outlook
-        for (Element div : body.select("div")) {
-            String existingStyle = div.attr("style");
-            if (existingStyle == null || existingStyle.isBlank()) {
-                div.attr("style", "margin:0; padding:0; font-size:14px;");
-            } else if (!existingStyle.toLowerCase().contains("font-size")) {
-                div.attr("style", existingStyle + "; font-size:14px;");
+            // Replace the first occurrence of line-height with px value.
+            String replaced = lh.replaceFirst("line-height:" + linePx + "px");
+
+            // Ensure Outlook uses the provided line-height exactly.
+            if (!replaced.toLowerCase().contains("mso-line-height-rule")) {
+                replaced = replaced + "; mso-line-height-rule:exactly";
             }
+
+            el.attr("style", replaced);
+        }
+    }
+
+    private static String sanitizeImageSourceForLogs(String src) {
+        if (src == null) {
+            return "<null>";
         }
 
-        // Add font-size to spans that don't have it
-        for (Element span : body.select("span")) {
-            String existingStyle = span.attr("style");
-            if (existingStyle == null || existingStyle.isBlank()) {
-                span.attr("style", "font-size:14px;");
-            } else if (!existingStyle.toLowerCase().contains("font-size")) {
-                span.attr("style", existingStyle + "; font-size:14px;");
+        String trimmed = src.trim();
+        if (trimmed.isEmpty()) {
+            return "<empty>";
+        }
+
+        String lower = trimmed.toLowerCase();
+        if (lower.startsWith("data:image")) {
+            // Avoid logging the full base64 payload.
+            String meta = trimmed;
+            int comma = trimmed.indexOf(',');
+            if (comma >= 0) {
+                meta = trimmed.substring(0, comma);
             }
+            return meta + ",<redacted>";
         }
 
-        // Add font-size to table cells for Outlook
-        for (Element td : body.select("td")) {
-            String existingStyle = td.attr("style");
-            if (existingStyle != null && !existingStyle.toLowerCase().contains("font-size")) {
-                td.attr("style", existingStyle + "; font-size:14px;");
-            } else if (existingStyle == null || existingStyle.isBlank()) {
-                td.attr("style", "font-size:14px;");
-            }
-        }
-    }
-
-    private static String normalizeImgStyleForEmail(String originalStyle) {
-        String style = originalStyle == null ? "" : originalStyle;
-
-        // Remove float:left - we use tables instead for email compatibility
-        style = style.replaceAll("(?i)float\\s*:\\s*left\\s*;?", "");
-
-        // Remove max-width percentage patterns (40%, etc.) - these don't work well in email
-        style = style.replaceAll("(?i)max-width\\s*:\\s*\\d+%\\s*;?", "");
-
-        // REMOVE any explicit height value - we will force height:auto for proportional scaling
-        style = style.replaceAll("(?i)height\\s*:\\s*[^;]+;?", "");
-
-        // PRESERVE width:XXXpx - this is the user's resized dimension!
-        // Only add defaults if not already present
-
-        // Email friendly defaults - ALWAYS add height:auto for proportional scaling
-        style = "height:auto; " + style;
-
-        if (!style.toLowerCase().contains("display")) {
-            style = "display:block; " + style;
-        }
-
-        // Add max-width:100% only if no pixel max-width is set
-        if (!style.toLowerCase().contains("max-width")) {
-            style = "max-width:100%; " + style;
-        }
-
-        return style.trim();
-    }
-
-    private static boolean isHardBlockBoundary(Node node) {
-        if (!(node instanceof Element el)) {
-            // Text nodes can belong to the wrapping section.
-            return false;
-        }
-        String tag = el.tagName().toLowerCase();
-        // Boundaries: new paragraph/div/list/table or another image.
-        return tag.equals("p")
-            || tag.equals("div")
-            || tag.equals("table")
-            || tag.equals("ul")
-            || tag.equals("ol")
-            || tag.equals("h1")
-            || tag.equals("h2")
-            || tag.equals("h3")
-            || tag.equals("img");
-    }
-
-    /**
-     * Wrap content in a basic email HTML template for better rendering.
-     * Includes MSO conditional comments for Outlook compatibility.
-     * Text wrapping is handled by the email client based on window size.
-     */
-    private String wrapInEmailTemplate(String content) {
-        return """
-            <!DOCTYPE html>
-            <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-            <head>
-                <meta charset="UTF-8">
-                <meta http-equiv="X-UA-Compatible" content="IE=edge">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <!--[if mso]>
-                <noscript>
-                <xml>
-                <o:OfficeDocumentSettings>
-                  <o:PixelsPerInch>96</o:PixelsPerInch>
-                </o:OfficeDocumentSettings>
-                </xml>
-                </noscript>
-                <style>
-                  table {border-collapse: collapse;}
-                  td {vertical-align: top;}
-                </style>
-                <![endif]-->
-            </head>
-            <body style="margin:0; padding:0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">
-            """ + content + """
-            </body>
-            </html>
-            """;
-    }
-
-    /**
-     * Send email with recipient in BCC field (sender email in To)
-     */
-    private void sendEmailWithBccSingle(String recipient, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-        helper.setFrom(fromEmail, fromName);
-        helper.setTo(fromEmail); // Send to self
-        helper.setBcc(recipient); // Actual recipient in BCC
-        helper.setSubject(subject);
-        helper.setText(convertToEmailSafeHtml(htmlContent), true);
-
-        mailSender.send(message);
-    }
-
-    /**
-     * Send email to multiple recipients using To field
-     */
-    private void sendEmailWithMultipleTo(List<String> recipients, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
-        if (recipients == null || recipients.isEmpty()) {
-            return;
-        }
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-        helper.setFrom(fromEmail, fromName);
-        helper.setTo(recipients.toArray(new String[0]));
-        helper.setSubject(subject);
-        helper.setText(convertToEmailSafeHtml(htmlContent), true);
-
-        mailSender.send(message);
-    }
-
-    /**
-     * Send email to multiple recipients using BCC field
-     * Sender email goes to To field, all recipients go to BCC
-     */
-    private void sendEmailWithBcc(List<String> recipients, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
-        if (recipients == null || recipients.isEmpty()) {
-            return;
-        }
-
-        log.info("sendEmailWithBcc: Sending to {} recipients via BCC, To field will be: {}", recipients.size(), fromEmail);
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-        helper.setFrom(fromEmail, fromName);
-        //helper.setTo(fromEmail); // Send to self
-        helper.setBcc(recipients.toArray(new String[0])); // All recipients in BCC
-
-        log.info("sendEmailWithBcc: BCC recipients set to: {}", recipients);
-
-        helper.setSubject(subject);
-        helper.setText(convertToEmailSafeHtml(htmlContent), true);
-
-        mailSender.send(message);
-        log.info("sendEmailWithBcc: Email sent successfully via BCC");
-    }
-
-    public boolean testConnection() {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            // Just creating a message tests the connection
-            return true;
-        } catch (Exception e) {
-            log.error("Mail server connection test failed: {}", e.getMessage());
-            return false;
-        }
-    }
+            java.net.URI uri = java.net.URI.create(trimmed);
 
-    public void sendTestEmail(String to, String subject, String htmlContent) throws Exception {
-        try {
-            sendEmail(to, subject, htmlContent);
-            log.info("Test email sent successfully to: {}", to);
-        } catch (MessagingException e) {
-            log.error("Failed to send test email: {}", e.getMessage());
-            throw e;
+            String scheme = uri.getScheme();
+            if (scheme == null) {
+                // Not a URI (or relative). Still try to avoid leaking query strings.
+                int q = trimmed.indexOf('?');
+                return q >= 0 ? trimmed.substring(0, q) + "?<redacted>" : trimmed;
+            }
+
+            // Recompose without userinfo/query/fragment.
+            // Keep path because caller asked for "full path"; for file:// URIs, that's the full local path.
+            java.net.URI sanitized = new java.net.URI(
+                scheme,
+                null,
+                uri.getHost(),
+                uri.getPort(),
+                uri.getPath(),
+                null,
+                null
+            );
+
+            String out = sanitized.toString();
+            if (trimmed.contains("?") && !out.contains("?")) {
+                out = out + "?<redacted>";
+            }
+            if (trimmed.contains("#") && !out.contains("#")) {
+                out = out + "#<redacted>";
+            }
+            return out;
+        } catch (Exception ignored) {
+            // Fall back to simple query/fragment removal.
+            String out = trimmed;
+            int q = out.indexOf('?');
+            if (q >= 0) {
+                out = out.substring(0, q) + "?<redacted>";
+            }
+            int hash = out.indexOf('#');
+            if (hash >= 0) {
+                out = out.substring(0, hash) + "#<redacted>";
+            }
+            return out;
         }
     }
 }
