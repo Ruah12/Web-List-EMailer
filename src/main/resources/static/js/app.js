@@ -1152,21 +1152,92 @@ function getDirectRows(table) {
 
 /**
  * Toggles table border visibility
+ * Uses data attribute to track state and falls back to detecting actual border style
  * @param {HTMLTableElement} table - The table to toggle borders on
  */
 function toggleTableBorders(table) {
     if (!table) return;
 
     const cells = table.querySelectorAll('td, th');
-    const hasBorder = cells[0]?.style.border && cells[0].style.border !== 'none';
+    if (cells.length === 0) return;
+
+    // Use data attribute to track border state (more reliable than computed styles)
+    // If not set, detect actual border state from first cell
+    let currentState = table.getAttribute('data-borders-visible');
+    let hasBorder;
+
+    if (currentState === null) {
+        // Attribute not set - detect actual border state from first cell
+        const firstCell = cells[0];
+        const computedStyle = window.getComputedStyle(firstCell);
+        const borderWidth = computedStyle.borderWidth || computedStyle.borderTopWidth;
+        // If border width is 0px or 'none', there are no borders
+        hasBorder = borderWidth && borderWidth !== '0px' && borderWidth !== '0';
+        console.log('[Table] Detected border state from computed style:', hasBorder, 'borderWidth:', borderWidth);
+    } else {
+        hasBorder = currentState !== 'false';
+    }
 
     cells.forEach(cell => {
         if (hasBorder) {
+            // Hide borders - remove all border styling
             cell.style.border = 'none';
+            cell.style.borderWidth = '0';
+            cell.style.borderStyle = 'none';
+            cell.style.borderColor = '';
         } else {
+            // Show borders - explicitly set all border properties
             cell.style.border = '1px solid #ccc';
+            cell.style.borderWidth = '1px';
+            cell.style.borderStyle = 'solid';
+            cell.style.borderColor = '#ccc';
         }
     });
+
+    // Also toggle the table border attribute for older formats
+    if (hasBorder) {
+        table.removeAttribute('border');
+        table.style.border = 'none';
+        table.style.borderCollapse = 'collapse';
+        table.setAttribute('data-borders-visible', 'false');
+    } else {
+        table.setAttribute('border', '1');
+        table.style.border = '1px solid #ccc';
+        table.style.borderCollapse = 'collapse';
+        table.setAttribute('data-borders-visible', 'true');
+    }
+    console.log('[Table] Toggled borders:', hasBorder ? 'hidden' : 'shown');
+}
+
+/**
+ * Toggles border visibility for the currently selected table
+ * Searches for table in selection or nearest table in editor
+ */
+function toggleSelectedTableBorders() {
+    let { table } = getSelectedTableContext();
+    // If no table from selection, try to find any table in editor that contains cursor
+    if (!table) {
+        const editor = document.getElementById('editor');
+        if (editor) {
+            // Check if there's only one table - use it
+            const tables = editor.querySelectorAll('table');
+            if (tables.length === 1) {
+                table = tables[0];
+            } else if (tables.length > 1) {
+                // Show message that user needs to click inside a table
+                console.warn('[Table] Multiple tables found, please click inside the table to toggle borders');
+                showInfoModal('Toggle Borders', 'Please click inside a table cell first, then click the border toggle button.');
+                return;
+            }
+        }
+    }
+    if (!table) {
+        console.warn('[Table] No table selected for border toggle');
+        showInfoModal('Toggle Borders', 'No table found. Please create a table or click inside an existing table.');
+        return;
+    }
+    toggleTableBorders(table);
+    console.log('[Table] Toggled borders for selected table');
 }
 
 /* ============================================================================
@@ -1973,8 +2044,35 @@ function setEditorHtml(html) {
         editor.innerHTML = html;
     }
 
+    // Reset table resize initialization flags so tables get new resize handles
+    const tables = editor.querySelectorAll('table');
+    tables.forEach(table => {
+        // Remove the init flag
+        delete table.dataset.resizeInit;
+        // Remove old resize handles that may have been serialized
+        table.querySelectorAll('.table-col-handle, .table-row-handle, .table-resize-handle, .table-resize-corner, .table-resize-row').forEach(h => h.remove());
+        // Ensure table has position relative for handles
+        table.style.position = 'relative';
+        // Ensure cells have position relative
+        table.querySelectorAll('td, th').forEach(cell => {
+            cell.style.position = 'relative';
+        });
+    });
+
     // Initialize table resizing for any tables in the loaded content
-    initTableResizing();
+    // Use longer timeout to ensure DOM is fully updated and rendered
+    setTimeout(() => {
+        console.log('[EDITOR] Initializing resize handles for', tables.length, 'table(s)');
+        initTableResizing();
+        // Verify initialization worked
+        const uninitializedTables = Array.from(editor.querySelectorAll('table')).filter(t => t.dataset.resizeInit !== 'true');
+        if (uninitializedTables.length > 0) {
+            console.warn('[EDITOR] Warning:', uninitializedTables.length, 'table(s) still not initialized, retrying...');
+            setTimeout(() => initTableResizing(), 100);
+        } else {
+            console.log('[EDITOR] All tables initialized successfully');
+        }
+    }, 100);
 
     // Log any console warnings/errors from setting HTML (for debugging template loads)
     const errors = [];
@@ -2140,6 +2238,14 @@ window.setEditorHtml = setEditorHtml;
 window.setStatus = setStatus;
 window.showResult = showResult;
 window.enableSendButton;
+window.toggleSelectedTableBorders = toggleSelectedTableBorders;
+window.toggleTableBorders = toggleTableBorders;
+window.exportToPdf = exportToPdf;
+window.exportToDocx = exportToDocx;
+window.exportToTxt = exportToTxt;
+window.exportToHtml = exportToHtml;
+window.rebuildTemplateButtons = rebuildTemplateButtons;
+window.rebuildTemplateMenuItems = rebuildTemplateMenuItems;
 
 /**
  * Updates all load button labels based on server-side stored subject.
@@ -2355,7 +2461,11 @@ function filterEmails() {
  */
 function getSelectedEmails() {
     const selected = [];
-    document.querySelectorAll('.email-checkbox:checked').forEach(cb => selected.push(cb.value));
+    document.querySelectorAll('.email-checkbox:checked').forEach(cb => {
+        console.log('[getSelectedEmails] Found checked checkbox with value:', cb.value);
+        selected.push(cb.value);
+    });
+    console.log('[getSelectedEmails] Total selected:', selected.length, 'emails:', selected);
     return selected;
 }
 
@@ -2736,17 +2846,22 @@ function sendEmails() {
             }
 
             const email = selectedEmails[idx];
+            console.log('[Individual Send] idx=' + idx + ' of ' + selectedEmails.length + ', sending to email: "' + email + '"');
+            console.log('[Individual Send] Full selectedEmails array:', JSON.stringify(selectedEmails));
             setStatus(`Sending ${idx + 1}/${selectedEmails.length}: ${email}`, true);
             updateSendStatusLine(idx, selectedEmails.length, ok, fail);
             updateSendButtonProgress(idx, selectedEmails.length, ok, fail);
 
+            const requestBody = {
+                subject, htmlContent, sendToAll: false, selectedEmails: [email],
+                sendMode: 'individual', addressMode
+            };
+            console.log('[Individual Send] Request body:', JSON.stringify(requestBody, null, 2));
+
             fetch('/api/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subject, htmlContent, sendToAll: false, selectedEmails: [email],
-                    sendMode: 'individual', addressMode
-                })
+                body: JSON.stringify(requestBody)
             })
             .then(r => r.json())
             .then(d => {
@@ -3059,49 +3174,52 @@ function saveBulkEmails() {
 /**
  * Opens the Configuration dialog.
  * Loads current configuration values and displays the modal.
- * @param {boolean} [closeOnSave=false] - If true, close modal and refresh page after save
  */
-function openConfiguration(closeOnSave = false) {
-    console.log('[CONFIG] Opening Configuration dialog (closeOnSave=' + closeOnSave + ')');
+function openConfiguration() {
+    console.log('[CONFIG] Opening Configuration dialog');
     fetch('/api/config')
         .then(r => r.json())
         .then(cfg => {
-            console.log('[CONFIG] Configuration loaded successfully', cfg);
+            console.log('[CONFIG] Configuration loaded successfully');
             const f = document.getElementById('configForm');
+            // SMTP settings
             f.elements['spring.mail.host'].value = cfg['spring.mail.host'] || '';
             f.elements['spring.mail.port'].value = cfg['spring.mail.port'] || '';
             f.elements['spring.mail.username'].value = cfg['spring.mail.username'] || '';
-            // passwords are masked; leave empty unless user wants to change
             f.elements['spring.mail.password'].value = '';
+            f.elements['spring.mail.password'].placeholder = cfg['spring.mail.password.encrypted'] ? '••••••• (encrypted)' : '(not set)';
+            // Sender settings
             f.elements['mail.from'].value = cfg['mail.from'] || '';
             f.elements['mail.from.name'].value = cfg['mail.from.name'] || '';
+            // Editor settings
             f.elements['app.editor.default.text.color'].value = cfg['app.editor.default.text.color'] || 'white';
             f.elements['app.template.slots'].value = cfg['app.template.slots'] || '5';
+            // Facebook settings
             document.getElementById('facebookEnabledSwitch').checked = (String(cfg['facebook.enabled']) === 'true');
             f.elements['facebook.email'].value = cfg['facebook.email'] || '';
             f.elements['facebook.password'].value = '';
+            f.elements['facebook.password'].placeholder = cfg['facebook.password.encrypted'] ? '••••••• (encrypted)' : '(not set)';
             f.elements['facebook.page.id'].value = cfg['facebook.page.id'] || '';
             f.elements['facebook.access.token'].value = '';
+            f.elements['facebook.access.token'].placeholder = cfg['facebook.access.token.encrypted'] ? '••••••• (encrypted)' : '(not set)';
+            // Reset button states
+            const saveBtn = document.getElementById('configSaveBtn');
+            const saveCloseBtn = document.getElementById('configSaveCloseBtn');
+            if (saveBtn) {
+                saveBtn.className = 'btn btn-primary';
+                saveBtn.innerHTML = 'Save';
+                saveBtn.disabled = false;
+            }
+            if (saveCloseBtn) {
+                saveCloseBtn.className = 'btn btn-outline-primary';
+                saveCloseBtn.innerHTML = 'Save &amp; Close';
+                saveCloseBtn.disabled = false;
+            }
             // Clear status message
             document.getElementById('configStatus').textContent = '';
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('configModal'));
             modal.show();
-
-            // Attach save handler with closeOnSave support
-            const saveBtn = document.getElementById('configSaveBtn');
-            const saveCloseBtn = document.querySelector('[onclick*="saveConfiguration(true)"]');
-            if (saveBtn) {
-                saveBtn.onclick = function() {
-                    saveConfiguration(false);
-                };
-            }
-            if (saveCloseBtn) {
-                saveCloseBtn.onclick = function() {
-                    saveConfiguration(true);
-                    return false;
-                };
-            }
         })
         .catch(err => {
             console.error('[CONFIG] Failed to load configuration:', err);
@@ -3112,13 +3230,19 @@ function openConfiguration(closeOnSave = false) {
 
 /**
  * Saves the configuration settings to the server.
- * Stores ALL values and optionally closes the modal and refreshes the page.
- * @param {boolean} [closeOnSave=false] - If true, close modal and refresh page after save
+ * Stores ALL values, updates button states, and optionally closes the modal.
+ * On success: Save button turns green briefly, configuration is stored to localStorage.
+ * On failure: Save button turns red briefly with error message.
+ * @param {boolean} [closeOnSave=false] - If true, close modal after save
  */
 function saveConfiguration(closeOnSave = false) {
     console.log('[CONFIG] Saving configuration (closeOnSave=' + closeOnSave + ')');
     const f = document.getElementById('configForm');
-
+    const saveBtn = closeOnSave
+        ? document.getElementById('configSaveCloseBtn')
+        : document.getElementById('configSaveBtn');
+    const originalBtnClass = saveBtn ? saveBtn.className : '';
+    const originalBtnText = saveBtn ? saveBtn.innerHTML : '';
     // Collect ALL values from form
     const payload = {
         'spring.mail.host': f.elements['spring.mail.host'].value.trim(),
@@ -3132,29 +3256,29 @@ function saveConfiguration(closeOnSave = false) {
         'facebook.email': f.elements['facebook.email'].value.trim(),
         'facebook.page.id': f.elements['facebook.page.id'].value.trim()
     };
-
     // Always send password fields if user entered a value (even if empty string to clear)
     const mailPassword = f.elements['spring.mail.password'].value;
     if (mailPassword !== '') {
         payload['spring.mail.password'] = mailPassword;
         console.log('[CONFIG] Mail password provided');
     }
-
     const fbPassword = f.elements['facebook.password'].value;
     if (fbPassword !== '') {
         payload['facebook.password'] = fbPassword;
         console.log('[CONFIG] Facebook password provided');
     }
-
     const fbToken = f.elements['facebook.access.token'].value;
     if (fbToken !== '') {
         payload['facebook.access.token'] = fbToken;
         console.log('[CONFIG] Facebook access token provided');
     }
-
-    console.log('[CONFIG] Payload to save:', payload);
+    console.log('[CONFIG] Payload to save:', Object.keys(payload).length + ' keys');
     document.getElementById('configStatus').textContent = 'Saving…';
-
+    // Disable button during save
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
     fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3164,38 +3288,229 @@ function saveConfiguration(closeOnSave = false) {
     .then(d => {
         if (d.status === 'ok') {
             console.log('[CONFIG] Configuration saved successfully');
-            // Show message that restart is required
+            // Store saved config in localStorage for immediate UI updates
+            localStorage.setItem('savedConfig', JSON.stringify(payload));
+            localStorage.setItem('configSavedAt', new Date().toISOString());
+            // Show success - green button
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.className = 'btn btn-success';
+                saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+            }
             document.getElementById('configStatus').innerHTML =
                 '<strong style="color: #28a745;">✓ Saved successfully!</strong> ' +
-                '<small style="color: #666;">(Application restart required for changes to take effect)</small>';
-
+                '<small style="color: #666;">(Restart required for full effect)</small>';
+            // Apply immediate UI updates (without clearing editor)
+            applyConfigToUI(payload);
             if (closeOnSave) {
-                console.log('[CONFIG] Closing modal and refreshing - changes will take effect after restart');
-                // Close modal
-                const modalEl = document.getElementById('configModal');
-                if (modalEl) {
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) {
-                        modal.hide();
-                    }
-                }
-                // Refresh page silently without alert dialog
+                console.log('[CONFIG] Closing modal (no page reload to preserve editor content)');
                 setTimeout(() => {
-                    console.log('[CONFIG] Refreshing page to apply new configuration values...');
-                    window.location.reload();
-                }, 300);
+                    // Close modal
+                    const modalEl = document.getElementById('configModal');
+                    if (modalEl) {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                }, 500);
             } else {
-                console.log('[CONFIG] Keeping modal open for further edits');
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    if (saveBtn) {
+                        saveBtn.className = originalBtnClass;
+                        saveBtn.innerHTML = originalBtnText;
+                    }
+                }, 2000);
             }
         } else {
             console.error('[CONFIG] Save failed:', d.message);
-            document.getElementById('configStatus').textContent = 'Failed: ' + (d.message || 'Unknown error');
+            // Show failure - red button
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.className = 'btn btn-danger';
+                saveBtn.innerHTML = '<i class="fas fa-times"></i> Failed';
+            }
+            document.getElementById('configStatus').innerHTML =
+                '<strong style="color: #dc3545;">✗ Failed:</strong> ' + (d.message || 'Unknown error');
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                if (saveBtn) {
+                    saveBtn.className = originalBtnClass;
+                    saveBtn.innerHTML = originalBtnText;
+                }
+            }, 3000);
         }
     })
     .catch(err => {
         console.error('[CONFIG] Save error:', err);
-        document.getElementById('configStatus').textContent = 'Error: ' + err.message;
+        // Show error - red button
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.className = 'btn btn-danger';
+            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+        }
+        document.getElementById('configStatus').innerHTML =
+            '<strong style="color: #dc3545;">✗ Error:</strong> ' + err.message;
+        // Reset button after 3 seconds
+        setTimeout(() => {
+            if (saveBtn) {
+                saveBtn.className = originalBtnClass;
+                saveBtn.innerHTML = originalBtnText;
+            }
+        }, 3000);
     });
+}
+
+/**
+ * Applies saved configuration values to the UI immediately.
+ * Updates visual elements that can change without restart.
+ * Does NOT clear or modify the editor content.
+ * @param {Object} config - Configuration values to apply
+ */
+function applyConfigToUI(config) {
+    console.log('[CONFIG] Applying config to UI');
+    // Update editor default text color if changed
+    if (config['app.editor.default.text.color'] && window.editorConfig) {
+        const colorMap = { 'white': '#ffffff', 'black': '#000000' };
+        window.editorConfig.defaultTextColor = colorMap[config['app.editor.default.text.color']] ||
+            config['app.editor.default.text.color'];
+        console.log('[CONFIG] Updated editor default text color to:', window.editorConfig.defaultTextColor);
+    }
+    // Update template slots count and rebuild buttons
+    if (config['app.template.slots']) {
+        const newSlots = parseInt(config['app.template.slots'], 10) || 5;
+        const oldSlots = (window.editorConfig && window.editorConfig.templateSlots) || 5;
+        if (!window.editorConfig) {
+            window.editorConfig = {};
+        }
+        window.editorConfig.templateSlots = newSlots;
+        console.log('[CONFIG] Updated template slots from', oldSlots, 'to:', newSlots);
+        // Always rebuild template buttons to ensure UI is in sync
+        rebuildTemplateButtons(newSlots);
+        rebuildTemplateMenuItems(newSlots);
+        // Refresh load button labels
+        if (typeof updateLoadButtonLabels === 'function') {
+            updateLoadButtonLabels();
+        }
+    }
+}
+
+/**
+ * Rebuilds the template Save/Load buttons in the footer based on new slot count
+ * @param {number} slotCount - Number of template slots
+ */
+function rebuildTemplateButtons(slotCount) {
+    const templateGroup = document.querySelector('.template-group');
+    if (!templateGroup) {
+        console.warn('[CONFIG] Template group not found, cannot rebuild buttons');
+        return;
+    }
+
+    // Remove old save and load buttons
+    templateGroup.querySelectorAll('.js-template-save').forEach(btn => btn.remove());
+    templateGroup.querySelectorAll('.js-template-load').forEach(btn => btn.remove());
+
+    // Find the label elements
+    const saveLabel = templateGroup.querySelector('strong[title*="Save"]');
+    const loadLabel = templateGroup.querySelector('strong[title*="Load"]');
+
+    if (!saveLabel || !loadLabel) {
+        console.warn('[CONFIG] Template labels not found, cannot rebuild buttons');
+        return;
+    }
+
+    // Create DocumentFragment for efficient DOM manipulation
+    const saveFragment = document.createDocumentFragment();
+    const loadFragment = document.createDocumentFragment();
+
+    // Create new save buttons
+    for (let i = 1; i <= slotCount; i++) {
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'btn btn-sm btn-outline-primary js-template-save';
+        saveBtn.setAttribute('data-template-slot', i);
+        saveBtn.title = 'Save to template slot ' + i;
+        saveBtn.textContent = i;
+        const slot = i; // Capture for closure
+        saveBtn.onclick = function() { saveTemplate(slot); };
+        saveFragment.appendChild(saveBtn);
+    }
+
+    // Create new load buttons
+    for (let i = 1; i <= slotCount; i++) {
+        const loadBtn = document.createElement('button');
+        loadBtn.type = 'button';
+        loadBtn.className = 'btn btn-sm btn-outline-secondary js-template-load';
+        loadBtn.id = 'loadBtn' + i;
+        loadBtn.setAttribute('data-template-slot', i);
+        loadBtn.title = 'Load template from slot ' + i;
+        loadBtn.textContent = i;
+        const slot = i; // Capture for closure
+        loadBtn.onclick = function() { loadTemplate(slot); };
+        loadFragment.appendChild(loadBtn);
+    }
+
+    // Insert save buttons after save label, before load label
+    let insertPoint = saveLabel.nextSibling;
+    while (insertPoint && insertPoint !== loadLabel) {
+        const next = insertPoint.nextSibling;
+        if (insertPoint.nodeType === Node.TEXT_NODE && insertPoint.textContent.trim() === '') {
+            insertPoint = next;
+            continue;
+        }
+        insertPoint = next;
+    }
+
+    // Insert save buttons right after save label
+    if (saveLabel.nextSibling) {
+        templateGroup.insertBefore(saveFragment, loadLabel);
+    } else {
+        templateGroup.appendChild(saveFragment);
+    }
+
+    // Append load buttons at the end (after load label)
+    templateGroup.appendChild(loadFragment);
+
+    console.log('[CONFIG] Rebuilt template buttons for', slotCount, 'slots');
+}
+
+/**
+ * Rebuilds the template menu items in File menu based on new slot count
+ * @param {number} slotCount - Number of template slots
+ */
+function rebuildTemplateMenuItems(slotCount) {
+    // Update Save Template submenu
+    const saveSubmenu = document.querySelector('#saveTemplateSlot1')?.closest('ul');
+    if (saveSubmenu) {
+        saveSubmenu.innerHTML = '';
+        for (let i = 1; i <= slotCount; i++) {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.id = 'saveTemplateSlot' + i;
+            a.textContent = 'Save to Slot ' + i;
+            a.onclick = function(e) { e.preventDefault(); saveTemplate(i); return false; };
+            li.appendChild(a);
+            saveSubmenu.appendChild(li);
+        }
+    }
+    // Update Load Template submenu
+    const loadSubmenus = document.querySelectorAll('.dropdown-menu .dropdown-item[onclick*="loadTemplate"]');
+    const loadSubmenu = loadSubmenus[0]?.closest('ul');
+    if (loadSubmenu) {
+        loadSubmenu.innerHTML = '';
+        for (let i = 1; i <= slotCount; i++) {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.textContent = 'Load from Slot ' + i;
+            a.onclick = function(e) { e.preventDefault(); loadTemplate(i); return false; };
+            li.appendChild(a);
+            loadSubmenu.appendChild(li);
+        }
+    }
+    console.log('[CONFIG] Rebuilt template menu items for', slotCount, 'slots');
 }
 
 
@@ -3288,11 +3603,164 @@ function exportToTxt(){ const editor=document.getElementById('editor'); const bl
  */
 function exportToHtml(){ const editor=document.getElementById('editor'); const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(document.getElementById('subject').value||'Message')+'</title></head><body>'+editor.innerHTML+'</body></html>'; const blob=new Blob([html],{type:'text/html;charset=utf-8'}); downloadBlob(blob, (document.getElementById('subject').value||'message')+'.html'); }
 
+/**
+ * Exports the current editor content to PDF file.
+ * First tries server-side PDF generation for better quality and consistency.
+ * Falls back to html2pdf.js client-side, then browser print dialog as last resort.
+ * Creates a properly styled document that preserves formatting.
+ */
+function exportToPdf() {
+    const editor = document.getElementById('editor');
+    if (!editor) {
+        showInfoModal('Export PDF', 'Editor not found.');
+        return;
+    }
+    const subject = document.getElementById('subject').value || 'Message';
+    const cleanContent = editor.cloneNode(true);
+    cleanContent.querySelectorAll('.table-col-handle, .table-row-handle, .table-resize-handle, .table-resize-corner, .table-resize-row').forEach(el => el.remove());
+
+    console.log('[Export] Starting PDF export, subject:', subject);
+
+    // Try server-side PDF generation first (best quality)
+    fetch('/api/export/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: subject, htmlContent: cleanContent.innerHTML })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Server PDF generation failed: ' + response.status);
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        console.log('[Export] PDF generated server-side successfully');
+        downloadBlob(blob, (subject || 'message') + '.pdf');
+    })
+    .catch(serverError => {
+        console.warn('[Export] Server-side PDF failed, trying html2pdf.js:', serverError.message);
+
+        // Fallback: Try html2pdf.js if available
+        if (typeof html2pdf !== 'undefined') {
+            try {
+                const opt = {
+                    margin: 10,
+                    filename: (subject || 'message') + '.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(cleanContent).save();
+                console.log('[Export] PDF generated using html2pdf.js');
+                return;
+            } catch (html2pdfError) {
+                console.warn('[Export] html2pdf.js failed:', html2pdfError.message);
+            }
+        } else {
+            console.warn('[Export] html2pdf.js not available');
+        }
+
+        // Last resort: Browser print dialog
+        console.log('[Export] Falling back to browser print dialog');
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (!printWindow) {
+            showInfoModal('Export PDF', 'Please allow pop-ups to export to PDF. Use browser Print dialog and select "Save as PDF".');
+            return;
+        }
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${subject}</title>
+    <style>
+        body {
+            font-family: Calibri, Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+            color: #000;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        td, th {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+        @media print {
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>${cleanContent.innerHTML}</body>
+</html>`;
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.onload = function() {
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+            }, 100);
+        };
+        setTimeout(() => {
+            if (printWindow && !printWindow.closed) {
+                printWindow.focus();
+                printWindow.print();
+            }
+        }, 500);
+    });
+}
 
 /**
- * Shows the About dialog
+ * Exports the current editor content to Microsoft Word (DOCX) format
+ * Uses HTML-to-Word conversion via Blob with MS Word MIME type
  */
-function showAbout(){ showInfoModal('About','Web-List-EMailer - Email Mass Sender'); }
+function exportToDocx() {
+    const editor = document.getElementById('editor');
+    const subject = document.getElementById('subject').value || 'Message';
+    const htmlContent = editor.innerHTML || '';
+    const docHtml = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="UTF-8"><title>${subject}</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>body{font-family:Calibri,Arial,sans-serif;} table{border-collapse:collapse;} td,th{border:1px solid #ccc;padding:4px;}</style></head><body>${htmlContent}</body></html>`;
+    const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    downloadBlob(blob, subject + '.doc');
+}
+
+
+/**
+ * Shows the About dialog with version information from the server.
+ * Fetches application name, version (from pom.xml), and copyright from the API.
+ * Falls back to basic info if the API call fails.
+ */
+function showAbout() {
+    fetch('/api/config/version')
+        .then(response => response.json())
+        .then(data => {
+            const content = `
+                <div class="about-dialog text-center">
+                    <h4>${data.name || 'Web-List-EMailer'}</h4>
+                    <p class="text-muted">${data.description || 'Email Mass Sender Application'}</p>
+                    <hr>
+                    <p><strong>Version:</strong> ${data.version || 'Unknown'}</p>
+                    <p class="small text-muted mt-3">${data.copyright || '© 2025 KiSoft. All rights reserved.'}</p>
+                </div>
+            `;
+            showInfoModal('About', content);
+        })
+        .catch(error => {
+            console.error('[ABOUT] Failed to fetch version info:', error);
+            showInfoModal('About', `
+                <div class="about-dialog text-center">
+                    <h4>Web-List-EMailer</h4>
+                    <p class="text-muted">Email Mass Sender Application</p>
+                    <hr>
+                    <p class="small text-muted mt-3">© 2025 KiSoft. All rights reserved.</p>
+                </div>
+            `);
+        });
+}
 
 /**
  * Shows the Detail Description dialog with comprehensive help documentation

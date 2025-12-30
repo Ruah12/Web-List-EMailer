@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @since 2025-12-28
  * @see TomcatConfig
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.browser.open=false")
 class TomcatConfigTest {
 
     @Autowired

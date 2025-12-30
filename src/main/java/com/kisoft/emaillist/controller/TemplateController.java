@@ -80,9 +80,10 @@ public class TemplateController {
     }
 
     /**
-     * Loads a template from the file system.
+     * Loads a template from the file system via POST request.
      *
-     * @param slot Template slot number (1-10)
+     * @param request Request body containing the slot number (1-10)
+     * @return ResponseEntity containing template data or error
      */
     @PostMapping(value = "/load", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> loadTemplatePost(@RequestBody TemplateSlotRequest request) {
@@ -316,8 +317,23 @@ public class TemplateController {
         }
     }
 
+    /**
+     * Request DTO for template operations requiring only a slot number.
+     *
+     * @param slot Template slot number (1-10)
+     */
     public record TemplateSlotRequest(Integer slot) { }
 
+    /**
+     * Safely truncates and sanitizes a value for logging.
+     *
+     * <p>Prevents log injection by replacing newlines and carriage returns with spaces.
+     * Truncates long values to prevent log spam.</p>
+     *
+     * @param value The value to sanitize (may be null)
+     * @param maxLen Maximum length before truncation
+     * @return Sanitized value safe for logging
+     */
     String safeLogValue(String value, int maxLen) {
         if (value == null) {
             return "(null)";

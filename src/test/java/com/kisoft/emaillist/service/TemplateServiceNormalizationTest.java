@@ -12,8 +12,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for TemplateService HTML normalization functionality.
- * Tests the cleanup of malformed image src attributes and SVG attributes
- * that contain CSS escape sequences or leading backslashes.
+ *
+ * <p>Tests the cleanup of malformed image src attributes and SVG attributes
+ * that contain CSS escape sequences or leading backslashes.</p>
+ *
+ * <h3>Test Coverage:</h3>
+ * <ul>
+ *   <li>Leading backslash removal from data URLs</li>
+ *   <li>CSS escape sequence handling (e.g., {@code \20} for space)</li>
+ *   <li>SVG width/height attribute cleaning</li>
+ *   <li>Newline and tab removal from base64 data</li>
+ *   <li>Preservation of valid data URLs</li>
+ *   <li>Edge cases: null, empty, blank content</li>
+ * </ul>
+ *
+ * <h3>Background:</h3>
+ * <p>When HTML is copied from Microsoft Word or other sources, image src attributes
+ * may contain CSS escape sequences like {@code \20} (space) or spurious backslashes.
+ * These malformed URLs cause images to fail loading. The normalization process
+ * cleans these artifacts while preserving valid base64-encoded image data.</p>
+ *
+ * @author KiSoft
+ * @version 1.0.0
+ * @since 2025-12-28
+ * @see TemplateService#normalizeHtmlContent(String)
  */
 class TemplateServiceNormalizationTest {
 

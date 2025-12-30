@@ -112,6 +112,14 @@ public class EmailSenderService {
                     result.addErrorMessage(email, errorMsg);
                 }
                 log.error("Failed to send batch: {}", errorMsg);
+            } catch (org.springframework.mail.MailException e) {
+                failCount.addAndGet(batch.size());
+                failedEmails.addAll(batch);
+                String errorMsg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                for (String email : batch) {
+                    result.addErrorMessage(email, errorMsg);
+                }
+                log.error("Failed to send batch (MailException): {}", errorMsg);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.warn("Batch sending interrupted");
@@ -152,8 +160,12 @@ public class EmailSenderService {
         SendResult result = new SendResult(total, 0, 0, "", failedEmails);
 
         log.info("Starting individual send to {} emails, useBcc={}", total, useBcc);
+        log.info("Email list to send (exact values): {}", emails);
 
+        int emailIndex = 0;
         for (String email : emails) {
+            emailIndex++;
+            log.info("=== Processing email {} of {}: '{}' (length={}) ===", emailIndex, total, email, email.length());
             try {
                 if (useBcc) {
                     sendEmailWithBccSingle(email, subject, htmlContent);
@@ -195,6 +207,7 @@ public class EmailSenderService {
      * @throws UnsupportedEncodingException If character encoding fails
      */
     private void sendEmail(String to, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
+        log.info(">>> sendEmail called - TO: '{}' (length={})", to, to.length());
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         
@@ -203,7 +216,9 @@ public class EmailSenderService {
         helper.setSubject(subject);
         helper.setText(convertToEmailSafeHtml(htmlContent), true);
 
+        log.info(">>> Sending email - TO: '{}', FROM: '{}'", to, fromEmail);
         mailSender.send(message);
+        log.info(">>> Email SENT successfully - TO: '{}'", to);
     }
 
     /**
@@ -596,14 +611,13 @@ public class EmailSenderService {
 
     /**
      * Converts deprecated HTML font tags to inline CSS styles.
-     *
-     * <p>The browser editor may still emit <code>&lt;font size="1..7"&gt;</code> via execCommand.
-     * Email clients (especially Outlook) handle these inconsistently, so we normalize to explicit
-     * pixel sizes.</p>
-     *
-     * <p>IMPORTANT: Outlook has a minimum readable font size of approximately 10-11px.
+     * The browser editor may still emit {@code <font size="1..7">} via execCommand.
+     * Email clients (especially Outlook) handle these inconsistently, so we normalize
+     * to explicit pixel sizes.
+     * IMPORTANT: Outlook has a minimum readable font size of approximately 10-11px.
      * Font size 8px renders as invisible/unreadable in Outlook. We map size 1 to 10px
-     * (smallest Outlook-readable size) to ensure text is always visible.</p>
+     * (smallest Outlook-readable size) to ensure text is always visible.
+     * @param body The HTML body element to process
      */
     private static void convertFontTagsToInlineStyles(Element body) {
         // Map HTML font size attribute (1-7) to CSS pixel sizes.
@@ -831,9 +845,9 @@ public class EmailSenderService {
 
     /**
      * Extracts width in pixels from a CSS style string.
-     *
-     * @param style CSS style string
-     * @return Width in pixels, or null if not found
+     * Parses inline style attribute to find width declarations in pixel format.
+     * @param style CSS style string to parse (e.g., "width: 200px; height: auto;")
+     * @return Width in pixels as Integer, or null if not found or not in px format
      */
     private static Integer extractWidthFromStyle(String style) {
         if (style == null || style.isBlank()) return null;
@@ -909,6 +923,7 @@ public class EmailSenderService {
      * @throws UnsupportedEncodingException If character encoding fails
      */
     private void sendEmailWithBccSingle(String recipient, String subject, String htmlContent) throws MessagingException, UnsupportedEncodingException {
+        log.info(">>> sendEmailWithBccSingle called - BCC: '{}' (length={})", recipient, recipient.length());
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -918,7 +933,9 @@ public class EmailSenderService {
         helper.setSubject(subject);
         helper.setText(convertToEmailSafeHtml(htmlContent), true);
 
+        log.info(">>> Sending email - TO: '{}', BCC: '{}'", fromEmail, recipient);
         mailSender.send(message);
+        log.info(">>> Email SENT successfully - BCC: '{}'", recipient);
     }
 
     /**
@@ -1195,6 +1212,15 @@ public class EmailSenderService {
         }
     }
 
+    /**
+     * Sanitizes an image source URL for safe logging.
+     * Prevents sensitive information leakage by:
+     * - Redacting base64 data in data URLs (shows only MIME type header)
+     * - Removing query strings and fragments from URLs
+     * - Removing user credentials from URLs
+     * @param src The image src attribute value to sanitize
+     * @return Sanitized string safe for logging (sensitive parts replaced with {@code <redacted>})
+     */
     private static String sanitizeImageSourceForLogs(String src) {
         if (src == null) {
             return "<null>";

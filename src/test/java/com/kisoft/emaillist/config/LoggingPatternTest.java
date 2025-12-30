@@ -9,6 +9,32 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Logging Pattern Verification Tests.
+ *
+ * <p>These tests verify that the Logback logging configuration produces
+ * correctly formatted log output with thread names and class information.</p>
+ *
+ * <h3>Test Coverage:</h3>
+ * <ul>
+ *   <li>Thread name inclusion in log output</li>
+ *   <li>Message content preservation</li>
+ *   <li>Method name or class name inclusion (depends on active logging config)</li>
+ * </ul>
+ *
+ * <h3>Flexibility:</h3>
+ * <p>Tests use {@code satisfiesAnyOf} assertions to handle both:
+ * <ul>
+ *   <li>Spring Boot default logging (shows class name)</li>
+ *   <li>Custom logback-spring.xml (shows method name)</li>
+ * </ul>
+ * This ensures tests pass in both standalone and Spring Boot test contexts.</p>
+ *
+ * @author KiSoft
+ * @version 1.0.0
+ * @since 2025-12-26
+ * @see org.slf4j.Logger
+ */
 @ExtendWith(OutputCaptureExtension.class)
 class LoggingPatternTest {
 

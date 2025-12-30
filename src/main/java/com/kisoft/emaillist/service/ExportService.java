@@ -316,8 +316,12 @@ public class ExportService {
 
     /**
      * Cleans unsupported CSS values that cause OpenHTMLToPDF warnings or errors.
-     * Removes linear-gradient backgrounds that crash the PDF renderer,
-     * unsupported cursor values, and editor-specific elements.
+     * Removes:
+     * - Table resize handles with linear-gradient (crashes PDF renderer)
+     * - Unsupported cursor values (col-resize, row-resize, etc.)
+     * - Vendor-prefixed CSS properties (-webkit-, -moz-, -ms-)
+     * - Various other unsupported properties (box-sizing, resize, overflow:auto)
+     * @param doc The Jsoup document to clean
      */
     private void cleanUnsupportedCss(Document doc) {
         // Remove table resize handles (they have linear-gradient that crashes PDF renderer)
@@ -365,7 +369,10 @@ public class ExportService {
 
     /**
      * Removes Microsoft Office VML/namespaced elements and attributes from HTML.
-     * This includes v:*, o:*, w:* prefixed attributes commonly found in Word/Outlook HTML.
+     * This includes v:*, o:*, w:*, x:* prefixed elements and attributes commonly
+     * found in Word/Outlook HTML that cause issues with PDF/DOCX export.
+     * Also cleans inline styles containing mso-* CSS properties.
+     * @param doc The Jsoup document to sanitize
      */
     private void sanitizeMicrosoftMarkup(Document doc) {
         // Remove VML and Office namespace elements (v:*, o:*, w:*, etc.)
@@ -429,7 +436,10 @@ public class ExportService {
     }
 
     /**
-     * Converts HTML elements to Word document content.
+     * Converts HTML elements to Word document content recursively.
+     * Iterates through child nodes and processes text nodes and elements.
+     * @param document The Word document to add content to
+     * @param element The HTML element to convert (typically document body)
      */
     private void convertHtmlToDocx(XWPFDocument document, Element element) {
         for (Node node : element.childNodes()) {
@@ -448,6 +458,11 @@ public class ExportService {
 
     /**
      * Processes individual HTML elements for Word conversion.
+     * Handles block elements (p, div, h1-h6, br, hr, ul, ol, table) and
+     * inline elements (img, a, strong, em, u, span).
+     * Each element type is converted to appropriate Word document structure.
+     * @param document The Word document to add content to
+     * @param element The HTML element to convert
      */
     private void processHtmlElement(XWPFDocument document, Element element) {
         String tagName = element.tagName().toLowerCase();
@@ -550,6 +565,10 @@ public class ExportService {
 
     /**
      * Applies paragraph-level styles from element attributes.
+     * Currently handles text-align CSS property for paragraph alignment
+     * (center, right, justify).
+     * @param para The Word paragraph to apply styles to
+     * @param element The HTML element containing style information
      */
     private void applyParagraphStyles(XWPFParagraph para, Element element) {
         String style = element.attr("style");
@@ -568,7 +587,11 @@ public class ExportService {
     }
 
     /**
-     * Processes inline content within a paragraph.
+     * Processes inline content within a paragraph for DOCX conversion.
+     * Iterates through child nodes (text nodes and elements) and creates
+     * appropriate Word runs with proper formatting inherited from parent.
+     * @param para The Word paragraph to add content to
+     * @param element The HTML element containing inline content
      */
     private void processInlineContent(XWPFParagraph para, Element element) {
         for (Node node : element.childNodes()) {
@@ -586,7 +609,11 @@ public class ExportService {
     }
 
     /**
-     * Processes inline elements with proper styling.
+     * Processes inline HTML elements (strong, em, span, etc.) with proper styling.
+     * Creates Word runs with appropriate formatting (bold, italic, underline, etc.)
+     * based on the HTML tag and inline styles.
+     * @param para The Word paragraph to add formatted content to
+     * @param el The HTML element to process
      */
     private void processInlineElement(XWPFParagraph para, Element el) {
         String tag = el.tagName().toLowerCase();
@@ -636,7 +663,10 @@ public class ExportService {
     }
 
     /**
-     * Applies styles from parent elements.
+     * Applies styles from parent elements to a Word run.
+     * Extracts inline CSS from parent element and applies corresponding Word formatting.
+     * @param run The Word run to apply styles to
+     * @param parent The parent HTML element containing style information
      */
     private void applyParentStyles(XWPFRun run, Element parent) {
         String style = parent.attr("style");
@@ -646,7 +676,10 @@ public class ExportService {
     }
 
     /**
-     * Applies styles from span elements.
+     * Applies styles from span elements to a Word run.
+     * Span elements often carry inline CSS for text formatting (color, font-size, etc.).
+     * @param run The Word run to apply styles to
+     * @param span The HTML span element containing style information
      */
     private void applySpanStyles(XWPFRun run, Element span) {
         String style = span.attr("style");
@@ -656,7 +689,10 @@ public class ExportService {
     }
 
     /**
-     * Applies inline CSS styles to a run.
+     * Applies inline CSS styles to a Word run.
+     * Extracts style attribute from element and delegates to applyStyleString.
+     * @param run The Word run to apply styles to
+     * @param el The HTML element containing the style attribute
      */
     private void applyInlineStyles(XWPFRun run, Element el) {
         String style = el.attr("style");
@@ -666,7 +702,16 @@ public class ExportService {
     }
 
     /**
-     * Parses and applies a CSS style string to a run.
+     * Parses and applies a CSS style string to a Word run.
+     * Handles the following CSS properties:
+     * - font-size (px, pt, em)
+     * - font-weight (bold, 700+)
+     * - font-style (italic)
+     * - text-decoration (underline, line-through)
+     * - color (#hex, rgb())
+     * - font-family
+     * @param run The Word run to apply styles to
+     * @param style CSS style string to parse and apply
      */
     private void applyStyleString(XWPFRun run, String style) {
         // Font size
@@ -734,7 +779,11 @@ public class ExportService {
     }
 
     /**
-     * Processes HTML table into Word table.
+     * Processes an HTML table into a Word table.
+     * Creates a Word table matching the HTML structure with proper cell content.
+     * Header cells (th) are automatically bolded.
+     * @param document The Word document to add the table to
+     * @param tableElement The HTML table element to convert
      */
     private void processTable(XWPFDocument document, Element tableElement) {
         Elements rows = tableElement.select("tr");
@@ -769,7 +818,14 @@ public class ExportService {
     }
 
     /**
-     * Processes HTML image into Word document.
+     * Processes an HTML image into a Word document.
+     * Handles multiple image source formats:
+     * - Base64 data URIs (embedded images) - decoded and added inline
+     * - Local file paths (file:// or absolute) - read and embedded
+     * - Remote URLs (http/https) - left as placeholder text
+     * Image dimensions are preserved from HTML attributes/styles with proper aspect ratio.
+     * @param document The Word document to add the image to
+     * @param imgElement The HTML img element to convert
      */
     private void processImage(XWPFDocument document, Element imgElement) {
         String src = imgElement.attr("src");
@@ -1012,6 +1068,12 @@ public class ExportService {
         }
     }
 
+    /**
+     * Detects MIME type from a file path based on file extension.
+     * Supports common image formats: PNG, GIF, BMP, JPEG.
+     * @param path File path to analyze
+     * @return MIME type string (defaults to "image/jpeg" for unknown extensions)
+     */
     private String detectMimeTypeFromPath(String path) {
         String lower = path.toLowerCase();
         if (lower.endsWith(".png")) return "image/png";
@@ -1021,7 +1083,10 @@ public class ExportService {
     }
 
     /**
-     * Escapes special XML characters.
+     * Escapes special XML characters to prevent malformed XML output.
+     * Replaces: &, <, >, ", ' with their XML entity equivalents.
+     * @param text Text to escape (may be null)
+     * @return XML-safe string (empty string if input is null)
      */
     private String escapeXml(String text) {
         if (text == null) return "";
@@ -1153,6 +1218,12 @@ public class ExportService {
         }
     }
 
+    /**
+     * Returns the first non-blank value from a list of strings.
+     * Useful for finding the first available attribute value among multiple candidates.
+     * @param values Varargs of string values to check
+     * @return First non-null, non-blank value, or null if all are blank
+     */
     private String firstNonBlank(String... values) {
         if (values == null) return null;
         for (String v : values) {

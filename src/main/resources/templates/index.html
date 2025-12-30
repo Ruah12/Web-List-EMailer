@@ -76,6 +76,9 @@ Dependencies:
     <!-- Font Awesome 6.5.1 - Icon library for UI icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
+    <!-- html2pdf.js - PDF generation library for Export to PDF feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <!-- Application CSS - Custom styles for email sender UI -->
     <link href="/css/app.css" rel="stylesheet">
 </head>
@@ -753,8 +756,8 @@ Dependencies:
           <div class="modal-footer">
             <span id="configStatus" class="text-muted me-auto"></span>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-outline-primary" onclick="saveConfiguration(true)">Save &amp; Close</button>
-            <button type="button" class="btn btn-primary" onclick="saveConfiguration(false)">Save</button>
+            <button type="button" id="configSaveCloseBtn" class="btn btn-outline-primary" onclick="saveConfiguration(true)">Save &amp; Close</button>
+            <button type="button" id="configSaveBtn" class="btn btn-primary" onclick="saveConfiguration(false)">Save</button>
           </div>
         </div>
       </div>

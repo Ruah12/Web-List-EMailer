@@ -1,176 +1,257 @@
-# Detailed Change List Since Last Git Push
+# Changes Since Last Git Push
 
-**Repository**: Web-List-EMailer  
-**Last Pushed Commit**: `d7e9d198c1783a7a465f02dd9a4a2eb7cb7bbd7e`  
-**Generated**: December 29, 2025
-
----
-
-## Summary of Changes
-
-The following changes have been made since the last git push:
+**Generated:** December 30, 2025  
+**Last Commit:** `8d8a257` - fix: Template HTML normalization and save feedback  
+**Branch:** main
 
 ---
 
-## 1. TemplateService HTML Normalization (FIXED)
+## Summary Statistics
 
-**File**: `src/main/java/com/kisoft/emaillist/service/TemplateService.java`
-
-### Changes Made:
-- Added `normalizeHtmlContent()` method to clean up malformed image `src` attributes
-- Added `preprocessSrcAttributes()` method to fix backslashes BEFORE Jsoup parsing
-- Added `cleanSrc()` method for cleaning individual src attribute values (simplified version)
-- Added `cleanAttributeValue()` method for normalizing SVG attributes
-- Added `normalizeAttribute()` helper method
-- Fixed regex pattern to include `DOTALL` flag for matching newlines in src attributes
-
-### cleanSrc() Implementation (Simplified):
-```java
-private String cleanSrc(String raw) {
-    if (raw == null || raw.isBlank()) return raw;
-    String s = raw.trim();
-    
-    // Step 1: Remove all newlines, carriage returns, and tabs
-    s = s.replace("\r", "").replace("\n", "").replace("\t", "");
-    
-    // Step 2: Strip all backslashes
-    s = s.replace("\\", "");
-    
-    // Step 3: Trim leading/trailing whitespace
-    return s.trim();
-}
-```
+- **27 files changed**
+- **~4,800+ lines added**
+- **~140 lines removed**
+- **Comprehensive unit test coverage added**
 
 ---
 
-## 2. TemplateController Changes
+## 1. New Features
 
-**File**: `src/main/java/com/kisoft/emaillist/controller/TemplateController.java`
+### 1.1 About Dialog with Version Information (NEW)
+- **Files:** `ConfigController.java`, `app.js`, `application.properties`, `pom.xml`
+- Added `/api/config/version` REST endpoint to retrieve application version info
+- Version is read from Maven `pom.xml` via resource filtering (`@project.version@`)
+- About dialog now displays:
+  - Application name
+  - Version number (from pom.xml)
+  - Description
+  - Copyright notice (© 2025 KiSoft)
+- Added Maven resource filtering configuration in `pom.xml`
 
-### Changes Made:
-- Removed `formatImageDetails()` method that was causing compilation error
-- Removed image content logging to prevent large log entries
-- Added detailed logging with template file paths for save/load operations
-- Added `safeLogValue()` helper for safe string truncation in logs
-
----
-
-## 3. Template Management UI (app.js)
-
-**File**: `src/main/resources/static/js/app.js`
-
-### Changes Made:
-- **Save Template Visual Feedback**: Added `flashSaveSlotFeedback()` function
-  - Shows green flash on success (Bootstrap success color #28a745)
-  - Shows red flash on failure (Bootstrap danger color #dc3545)
-  - Flash duration: 1.5 seconds
-  - Removes alert dialogs, uses inline feedback instead
-- **Load Template**: Uses POST method with JSON body instead of GET
-- **Template Audit Logging**: Added `sendTemplateLogToServer()` for server-side audit trail
-
----
-
-## 4. Configuration Dialog Improvements
-
-**File**: `src/main/resources/static/js/app.js`
-
-### Changes Made:
-- `openConfiguration()` and `saveConfiguration()` functions:
-  - Data is now properly stored and applied after dialog exit
-  - Added proper closeOnSave parameter handling
-  - Configuration saves to file and persists across restarts
-  - Status messages show save success/failure inline
-  - Shows restart required message after save
+### 1.2 Configuration Dialog Enhancements
+- **Files:** `ConfigController.java`, `app.js`
+- Added support for reading saved (but not yet applied) values from `application-local.properties`
+- Configuration now properly persists and loads:
+  - SMTP settings
+  - Sender settings
+  - Editor settings (default text color, template slots)
+  - Facebook integration settings
+  - Logging configuration
+- Template slot changes now correctly update UI after save
 
 ---
 
-## 5. Test Fixes
+## 2. Bug Fixes
 
-**File**: `src/test/java/com/kisoft/emaillist/service/TemplateServiceNormalizationTest.java`
+### 2.1 Email Sending Fix - Multiple Recipients
+- **Files:** `EmailController.java`, `EmailSenderService.java`
+- Fixed issue where selecting 2 emails would send 2 copies to the first email
+- Each email now correctly sent to its intended recipient
+- Added detailed logging for debugging email send operations
 
-### Test Cases (16 total):
-1. ✅ `debugJsoupBackslashHandling` - Debug test
-2. ✅ `shouldRemoveLeadingBackslashesFromDataUrl`
-3. ✅ `shouldRemoveMultipleLeadingBackslashesFromDataUrl`
-4. ✅ `shouldHandleCssEscapeSequenceSpace` - FIXED
-5. ✅ `shouldCleanSvgWidthAttribute`
-6. ✅ `shouldCleanSvgHeightAttribute`
-7. ✅ `shouldPreserveValidDataUrl`
-8. ✅ `shouldRemoveBackslashesFromInsideDataUrl` - FIXED
-9. ✅ `shouldHandleNullContent`
-10. ✅ `shouldHandleEmptyContent`
-11. ✅ `shouldHandleBlankContent`
-12. ✅ `shouldHandleContentWithoutImages`
-13. ✅ `shouldRemoveNewlinesAndTabsFromDataUrls` - FIXED
-14. ✅ `shouldHandleMixedEscapeSequences`
-15. ✅ `shouldPreserveParagraphStyling`
-16. ✅ `shouldPreserveImageDimensions`
-17. ✅ `shouldPreserveInlineStyles`
+### 2.2 Table Border Toggle Fix
+- **Files:** `app.js`
+- Fixed table border "Show" not working when table loaded from template
+- Function now detects actual CSS border state when `data-borders-visible` attribute is not set
+- Works correctly for tables with or without the tracking attribute
 
-### Fixes Applied:
-1. **CSS Escape Sequence Handling**: Simplified by removing all backslashes instead of trying to parse CSS escapes
-2. **Newline/Tab Removal**: Using simple `replace()` instead of `replaceAll()` with regex
-3. **Backslash Inside Data URL**: All backslashes now removed uniformly
-4. **Regex DOTALL flag**: Added to `preprocessSrcAttributes()` so pattern matches newlines in attribute values
+### 2.3 PDF Export Fix
+- **Files:** `app.js`, `ExportService.java`
+- Fixed PDF export calling browser print dialog instead of generating PDF
+- Implemented fallback chain:
+  1. Server-side PDF generation via `/api/export/pdf` (best quality)
+  2. Client-side `html2pdf.js` 
+  3. Browser print dialog (last resort)
+- Added proper error handling and user feedback
 
----
+### 2.4 Table Resize After Template Load
+- **Files:** `app.js`
+- Fixed table resize handles not working on template-loaded tables
+- Increased initialization timeout from 50ms to 100ms
+- Added verification and automatic retry mechanism
+- Added debug logging
 
-## 6. Documentation Added
-
-New documentation files in `docs/`:
-- `BROWSER_ERROR_FIX.md`
-- `BROWSER_ERROR_FIX_REPORT.md`
-- `COMPLETE_RESOLUTION_SUMMARY.md`
-- `FIX_INDEX.md`
-- `IMAGE_SRC_FIX_SUMMARY.md`
-- `IMPLEMENTATION_COMPLETE.md`
-- `PICTURE_VERIFICATION_AND_REPAIR_GUIDE.md`
-- `QUICK_FIX.md`
-- `QUICK_FIX_SUMMARY.md`
-- `VERIFICATION_GUIDE_IMAGE_FIX.md`
-- `VISUAL_GUIDE.md`
+### 2.5 Template HTML Normalization
+- **Files:** `TemplateService.java`, `TemplateStorageService.java`
+- Fixed image src attribute corruption issues with CSS escape sequences
+- Fixed SVG attribute parsing errors
+- Removed unnecessary logging of image content
 
 ---
 
-## Files Changed Since Last Push
+## 3. Test Coverage Additions
 
-| File | Status | Changes |
-|------|--------|---------|
-| `src/main/java/.../TemplateService.java` | Modified | HTML normalization logic, simplified cleanSrc() |
-| `src/main/java/.../TemplateController.java` | Modified | Removed formatImageDetails, added path logging |
-| `src/main/resources/static/js/app.js` | Modified | Save feedback, config dialog |
-| `src/test/.../TemplateServiceNormalizationTest.java` | Modified | Added normalization tests |
-| `docs/*.md` | Added | Various documentation files |
+### 3.1 New Test Files (12 files)
+| File | Tests | Purpose |
+|------|-------|---------|
+| `ConfigControllerTest.java` | 17+ | Configuration API endpoints (incl. version) |
+| `EmailControllerTest.java` | 20+ | Email sending API |
+| `EmailRequestTest.java` | 10+ | Email request model validation |
+| `SendResultTest.java` | 15+ | Send result model |
+| `EmailListServiceTest.java` | 20+ | Email list management |
+| `EmailSenderServiceTest.java` | 15+ | Email sending service |
+| `ExportServiceTest.java` | 20+ | PDF/DOC/HTML export |
+| `FacebookServiceTest.java` | 10+ | Facebook integration |
+| `TemplateServiceTest.java` | 20+ | Template CRUD operations |
+| `application-test.properties` | - | Test configuration |
+| `application.properties` (test) | - | Test environment config |
+
+### 3.2 Test File Updates
+- `LoggingPatternTest.java` - Extended with additional assertions
+- `ResourcePathStartupLoggerTest.java` - Fixed test isolation
+- `TomcatConfigTest.java` - Updated configuration
+- `TemplateControllerWebMvcTest.java` - Added new test cases
+- `TemplateServiceNormalizationTest.java` - Fixed test expectations
+- `JasyptEncryptTest.java` - Removed password printing, fixed browser opening
 
 ---
 
-## How to Test
+## 4. Code Quality Improvements
 
-Run all tests:
-```bash
-mvn test
-```
+### 4.1 Detailed Comments Added
+All modified files now include comprehensive Javadoc comments with:
+- Class-level documentation
+- Method descriptions
+- Parameter documentation
+- Security considerations
+- Usage examples
 
-Run only normalization tests:
-```bash
-mvn test -Dtest=TemplateServiceNormalizationTest
-```
+### 4.2 Logging Improvements
+- Standardized logging prefixes (e.g., `[CONFIG-API]`, `[TEMPLATE]`, `[EMAIL]`)
+- Sensitive data protection (passwords never logged)
+- Debug-level logging for troubleshooting
 
 ---
 
-## Recommended Commit Message
+## 5. Files Changed Summary
 
-```
-fix: Template HTML normalization and save feedback
+### Backend (Java)
+| File | Changes |
+|------|---------|
+| `ConfigController.java` | +129 lines - Version endpoint, property loading |
+| `EmailController.java` | +25 lines - Logging, comments |
+| `TemplateController.java` | +20 lines - Logging improvements |
+| `EmailSenderService.java` | +46 lines - Multi-recipient fix |
+| `ExportService.java` | +97 lines - PDF export improvements |
+| `TemplateService.java` | +57 lines - Normalization fixes |
+| `TemplateStorageService.java` | +95 lines - Storage improvements |
 
-- Add HTML content normalization for malformed image src attributes
-- Simplify cleanSrc() to remove all backslashes and whitespace
-- Add DOTALL flag to regex for matching newlines in src attributes
-- Add visual feedback (green/red flash) on template save
-- Remove alert dialogs for template operations
-- Add detailed file path logging for template save/load
-- Fix TemplateController compilation error (remove formatImageDetails)
+### Frontend (JavaScript/HTML)
+| File | Changes |
+|------|---------|
+| `app.js` | +550 lines - About dialog, bug fixes, improvements |
+| `index.html` | +7 lines - Minor updates |
 
-All 16+ normalization tests now passing
-```
+### Configuration
+| File | Changes |
+|------|---------|
+| `pom.xml` | +17 lines - Maven resource filtering |
+| `application.properties` | +8 lines - Version, copyright properties |
+
+### Tests
+| File | Status |
+|------|--------|
+| `ConfigControllerTest.java` | NEW + Updated |
+| `EmailControllerTest.java` | NEW |
+| `EmailRequestTest.java` | NEW |
+| `SendResultTest.java` | NEW |
+| `EmailListServiceTest.java` | NEW |
+| `EmailSenderServiceTest.java` | NEW |
+| `ExportServiceTest.java` | NEW |
+| `FacebookServiceTest.java` | NEW |
+| `TemplateServiceTest.java` | NEW |
+| `LoggingPatternTest.java` | Updated |
+| `ResourcePathStartupLoggerTest.java` | Updated |
+| `TomcatConfigTest.java` | Updated |
+| `TemplateControllerWebMvcTest.java` | Updated |
+| `TemplateServiceNormalizationTest.java` | Updated |
+| `JasyptEncryptTest.java` | Updated |
+| `application.properties` (test) | Updated |
+
+---
+
+## 6. API Changes
+
+### New Endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/config/version` | Get app version, name, copyright |
+
+### Modified Endpoints
+| Method | Path | Change |
+|--------|------|--------|
+| GET | `/api/config` | Now reads from local properties file |
+| POST | `/api/config` | Enhanced persistence with encryption |
+
+---
+
+## 7. Breaking Changes
+
+**None** - All changes are backward compatible.
+
+---
+
+## 8. Recommended Commit Structure
+
+Split into logical commits:
+
+1. **feat: Add version info to About dialog**
+   - ConfigController.java (version endpoint)
+   - app.js (showAbout function)
+   - application.properties (version, copyright)
+   - pom.xml (resource filtering)
+
+2. **fix: Multiple recipient email sending**
+   - EmailController.java
+   - EmailSenderService.java
+
+3. **fix: Table border toggle and PDF export**
+   - app.js (toggleTableBorders, exportToPdf)
+   - ExportService.java
+
+4. **fix: Template loading improvements**
+   - TemplateService.java
+   - TemplateStorageService.java
+   - TemplateController.java
+
+5. **test: Add comprehensive unit test coverage**
+   - All test files (new and updated)
+   - Test configuration files
+
+6. **docs: Update change documentation**
+   - CHANGES_2025-12-30.md
+   - CHANGES_SINCE_LAST_PUSH.md
+
+---
+
+## 9. Verification Checklist
+
+- [ ] `mvn clean test` passes (218+ tests)
+- [ ] Application starts without errors
+- [ ] About dialog shows version from pom.xml
+- [ ] Email sending works for multiple recipients
+- [ ] Table border toggle works on template tables
+- [ ] PDF export generates downloadable file
+- [ ] Configuration dialog saves and loads values
+- [ ] Template slot changes update UI
+
+---
+
+## 10. Notes
+
+### Test Environment
+- Tests use mock configurations to prevent:
+  - Browser auto-opening during tests
+  - Actual email sending
+  - External service calls
+- Password encryption tests use deterministic values
+
+### Security
+- Passwords never logged in plaintext
+- Sensitive values encrypted with Jasypt before persistence
+- API responses mask password fields
+
+---
+
+*End of Change List*
 

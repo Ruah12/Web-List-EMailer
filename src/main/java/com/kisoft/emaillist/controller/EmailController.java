@@ -15,6 +15,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -121,8 +122,10 @@ public class EmailController {
     @PostMapping("/api/send")
     @ResponseBody
     public ResponseEntity<SendResult> sendEmails(@RequestBody EmailRequest request) {
-        log.info("Received send request: subject={}, sendToAll={}, mode={}, addressMode={}",
-                request.getSubject(), request.getSendToAll(), request.getSendMode(), request.getAddressMode());
+        String requestId = java.util.UUID.randomUUID().toString().substring(0, 8);
+        log.info("[REQ-{}] Received send request: subject={}, sendToAll={}, mode={}, addressMode={}",
+                requestId, request.getSubject(), request.getSendToAll(), request.getSendMode(), request.getAddressMode());
+        log.info("[REQ-{}] Selected emails array: {}", requestId, java.util.Arrays.toString(request.getSelectedEmails()));
 
         SendResult result;
         List<String> emails;
@@ -131,27 +134,37 @@ public class EmailController {
         boolean sendToAll = Boolean.TRUE.equals(request.getSendToAll());
         if (sendToAll) {
             emails = emailListService.loadEmailList();
+            log.info("[REQ-{}] Using all emails from list: {} recipients", requestId, emails.size());
         } else {
-            emails = Arrays.asList(request.getSelectedEmails());
+            String[] selectedArray = request.getSelectedEmails();
+            if (selectedArray != null) {
+                emails = Arrays.asList(selectedArray);
+                log.info("[REQ-{}] Using selected emails: {} recipients - {}", requestId, emails.size(), emails);
+            } else {
+                emails = new ArrayList<>();
+                log.warn("[REQ-{}] No selected emails provided", requestId);
+            }
         }
 
         String sendMode = request.getSendMode();
         String addressMode = request.getAddressMode();
         boolean useBcc = "bcc".equalsIgnoreCase(addressMode);
 
-        log.info("Processing: sendMode={}, addressMode={}, useBcc={}, batchSize={}",
-                sendMode, addressMode, useBcc, request.getBatchSize());
+        log.info("[REQ-{}] Processing: sendMode={}, addressMode={}, useBcc={}, batchSize={}",
+                requestId, sendMode, addressMode, useBcc, request.getBatchSize());
 
         // Execute appropriate sending strategy
         if ("batch".equals(sendMode)) {
             int batchSize = (request.getBatchSize() != null && request.getBatchSize() > 0) ? request.getBatchSize() : 10;
             int delayMs = (request.getDelayMs() != null && request.getDelayMs() >= 0) ? request.getDelayMs() : 500;
-            log.info("Calling sendBatch with useBcc={}, delayMs={}", useBcc, delayMs);
+            log.info("[REQ-{}] Calling sendBatch with useBcc={}, delayMs={}", requestId, useBcc, delayMs);
             result = emailSenderService.sendBatch(emails, request.getSubject(), request.getHtmlContent(), batchSize, useBcc, delayMs);
         } else {
+            log.info("[REQ-{}] Calling sendIndividual with emails={}", requestId, emails);
             result = emailSenderService.sendIndividual(emails, request.getSubject(), request.getHtmlContent(), useBcc);
         }
 
+        log.info("[REQ-{}] Send complete - result: success={}, fail={}", requestId, result.getSuccessCount(), result.getFailCount());
         return ResponseEntity.ok(result);
     }
 

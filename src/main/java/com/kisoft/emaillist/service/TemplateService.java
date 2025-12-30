@@ -342,6 +342,12 @@ public class TemplateService {
         }
     }
 
+    /**
+     * Analyzes images in HTML content for diagnostic purposes.
+     * Counts total images, data URL images, and path-based images.
+     * @param htmlContent HTML content to analyze
+     * @return Map containing imageCount, dataUrlCount, and pathCount
+     */
     private Map<String, Object> analyzeImages(String htmlContent) {
         Map<String, Object> summary = new HashMap<>();
         if (htmlContent == null || htmlContent.isBlank()) {
@@ -375,6 +381,12 @@ public class TemplateService {
 
     // --- Helper Methods ---
 
+    /**
+     * Gets the creation time of a file as an ISO-8601 string.
+     * Falls back to current time if file doesn't exist or time cannot be read.
+     * @param file Path to the file
+     * @return ISO-8601 timestamp string
+     */
     private String getFileCreatedTime(Path file) {
         try {
             if (Files.exists(file)) {
@@ -560,7 +572,10 @@ public class TemplateService {
     }
 
     /**
-     * Parses a JSON escape character.
+     * Parses a JSON escape character and returns the corresponding character.
+     * Handles standard JSON escapes: n, r, t, b, f, ", \, /
+     * @param c The character following the backslash in the escape sequence
+     * @return The actual character represented by the escape sequence
      */
     private char parseEscapeChar(char c) {
         return switch (c) {
@@ -587,21 +602,20 @@ public class TemplateService {
      * @return Cleaned HTML content with normalized img src values
      */
     public String normalizeHtmlContent(String htmlContent) {
-        if (htmlContent == null || htmlContent.isBlank()) {
+        if (htmlContent == null || htmlContent.isEmpty()) {
+            return htmlContent;
+        }
+        // Return whitespace-only content as-is
+        if (htmlContent.isBlank()) {
             return htmlContent;
         }
 
-        // Quick check: if content doesn't contain backslash escapes or problematic patterns, return as-is
+        // Quick check: if content doesn't contain problematic patterns, return as-is
         // Check for:
-        // - Escaped quotes or backslashes
-        // - Leading backslash in src attributes
-        // - Any backslash in src attributes (including inside data URLs)
-        // - Newlines or tabs in data URLs (which can break parsing)
-        boolean needsNormalization = htmlContent.contains("\\\"")
-            || htmlContent.contains("\\\\")
-            || htmlContent.contains("src=\"\\")
-            || htmlContent.contains("src='\\")
-            || (htmlContent.contains("src=") && htmlContent.contains("\\"))
+        // - Any backslash character (handles escapes, CSS sequences, embedded backslashes)
+        // - Newlines or tabs in data URLs
+        // - Newlines or tabs in data URLs
+        boolean needsNormalization = htmlContent.contains("\\")
             || (htmlContent.contains("data:") && (htmlContent.contains("\n") || htmlContent.contains("\r") || htmlContent.contains("\t")));
 
         if (!needsNormalization) {
@@ -651,6 +665,9 @@ public class TemplateService {
     /**
      * Pre-processes src attributes in raw HTML to clean up backslashes and whitespace
      * BEFORE Jsoup parsing. This avoids Jsoup interpreting backslashes as CSS escapes.
+     * Uses regex to find all src="..." or src='...' patterns and cleans each value.
+     * @param html Raw HTML string that may contain malformed src attributes
+     * @return HTML with cleaned src attribute values
      */
     private String preprocessSrcAttributes(String html) {
         if (html == null) return null;
@@ -702,6 +719,9 @@ public class TemplateService {
 
     /**
      * Cleans attribute values by removing CSS escape sequences and backslashes.
+     * Handles CSS escape sequences like \20 (space) by converting hex to character.
+     * @param raw Raw attribute value that may contain escape sequences
+     * @return Cleaned attribute value with escapes resolved and backslashes removed
      */
     private String cleanAttributeValue(String raw) {
         if (raw == null || raw.isBlank()) {
@@ -733,6 +753,19 @@ public class TemplateService {
     }
 
 
+    /**
+     * Cleans an image src attribute value.
+     *
+     * <p>Performs the following transformations in order:</p>
+     * <ol>
+     *   <li>Remove all newlines, carriage returns, and tabs</li>
+     *   <li>Strip all backslashes (handles leading {@code \data:}, CSS escapes, and embedded backslashes)</li>
+     *   <li>Trim leading/trailing whitespace</li>
+     * </ol>
+     *
+     * @param raw Raw src attribute value
+     * @return Cleaned src value suitable for data URL or path
+     */
     private String cleanSrc(String raw) {
         if (raw == null || raw.isBlank()) {
             return raw;
