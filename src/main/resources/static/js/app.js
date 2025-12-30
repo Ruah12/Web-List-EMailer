@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
             applyStoredFormat();
             formatPainterActive = false;
             storedFormat = null;
-            document.body.style.cursor = 'default';
+            document.body.classList.add('cursor-default');
             // Remove active state from format painter button
             const fpBtn = document.querySelector('[data-cmd="formatPainter"]');
             if (fpBtn) fpBtn.classList.remove('active');
@@ -815,11 +815,12 @@ function insertTable(rows, cols) {
     const initialWidth = Math.max(200, cols * 100);
 
     // Build table HTML with resizable width (not 100%)
-    let tableHtml = `<table class="editor-table" style="width: ${initialWidth}px; border-collapse: collapse; margin: 10px 0; table-layout: fixed;">`;
+    // Static styles via CSS class, dynamic width and text color inline
+    let tableHtml = `<table class="editor-table" style="width: ${initialWidth}px;">`;
     for (let r = 0; r < rows; r++) {
         tableHtml += '<tr>';
         for (let c = 0; c < cols; c++) {
-            tableHtml += `<td style="border: 1px solid #ccc; padding: 8px; min-width: 50px; color: ${textColor};" contenteditable="true">&nbsp;</td>`;
+            tableHtml += `<td class="editor-table-cell" style="color: ${textColor};" contenteditable="true">&nbsp;</td>`;
         }
         tableHtml += '</tr>';
     }
@@ -1009,14 +1010,9 @@ function initTableResizing() {
                 // Skip if cell already has resize handle
                 if (cell.querySelector('.table-resize-col')) return;
 
-                cell.style.position = 'relative';
-
-                // Create right edge resize handle for column width
+                // Create right edge resize handle for column width (positioning via CSS)
                 const colHandle = document.createElement('div');
                 colHandle.className = 'table-col-handle';
-                colHandle.style.right = '-3px';
-                colHandle.style.top = '0';
-                colHandle.style.bottom = '0';
                 cell.appendChild(colHandle);
 
                 // Column resize logic
@@ -1049,9 +1045,6 @@ function initTableResizing() {
             if (firstCell && !firstCell.querySelector('.table-resize-row')) {
                 const rowHandle = document.createElement('div');
                 rowHandle.className = 'table-row-handle table-resize-row';
-                rowHandle.style.left = '0';
-                rowHandle.style.right = '0';
-                rowHandle.style.bottom = '-3px';
                 firstCell.appendChild(rowHandle);
 
                 // Row resize logic
@@ -1081,11 +1074,8 @@ function initTableResizing() {
 
         // Add table-wide resize handle at bottom-right corner
         if (!table.querySelector('.table-resize-corner')) {
-            table.style.position = 'relative';
             const tableHandle = document.createElement('div');
             tableHandle.className = 'table-resize-handle table-resize-corner';
-            tableHandle.style.right = '-6px';
-            tableHandle.style.bottom = '-6px';
             table.appendChild(tableHandle);
 
             // Table resize logic (resize whole table)
@@ -2051,12 +2041,7 @@ function setEditorHtml(html) {
         delete table.dataset.resizeInit;
         // Remove old resize handles that may have been serialized
         table.querySelectorAll('.table-col-handle, .table-row-handle, .table-resize-handle, .table-resize-corner, .table-resize-row').forEach(h => h.remove());
-        // Ensure table has position relative for handles
-        table.style.position = 'relative';
-        // Ensure cells have position relative
-        table.querySelectorAll('td, th').forEach(cell => {
-            cell.style.position = 'relative';
-        });
+        // CSS classes now handle position:relative for tables and cells
     });
 
     // Initialize table resizing for any tables in the loaded content
@@ -3298,8 +3283,8 @@ function saveConfiguration(closeOnSave = false) {
                 saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
             }
             document.getElementById('configStatus').innerHTML =
-                '<strong style="color: #28a745;">✓ Saved successfully!</strong> ' +
-                '<small style="color: #666;">(Restart required for full effect)</small>';
+                '<strong class="config-status-success">✓ Saved successfully!</strong> ' +
+                '<small class="config-status-muted">(Restart required for full effect)</small>';
             // Apply immediate UI updates (without clearing editor)
             applyConfigToUI(payload);
             if (closeOnSave) {
@@ -3330,7 +3315,7 @@ function saveConfiguration(closeOnSave = false) {
                 saveBtn.innerHTML = '<i class="fas fa-times"></i> Failed';
             }
             document.getElementById('configStatus').innerHTML =
-                '<strong style="color: #dc3545;">✗ Failed:</strong> ' + (d.message || 'Unknown error');
+                '<strong class="config-status-error">✗ Failed:</strong> ' + (d.message || 'Unknown error');
             // Reset button after 3 seconds
             setTimeout(() => {
                 if (saveBtn) {
@@ -3349,7 +3334,7 @@ function saveConfiguration(closeOnSave = false) {
             saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
         }
         document.getElementById('configStatus').innerHTML =
-            '<strong style="color: #dc3545;">✗ Error:</strong> ' + err.message;
+            '<strong class="config-status-error">✗ Error:</strong> ' + err.message;
         // Reset button after 3 seconds
         setTimeout(() => {
             if (saveBtn) {
@@ -4052,7 +4037,7 @@ function showDetailDescription() {
 
             <div class="help-footer">
                 <hr>
-                <p><strong>Version:</strong> 0.0.13-SNAPSHOT</p>
+                <p><strong>Version:</strong> 0.0.14-SNAPSHOT</p>
                 <p><strong>Java:</strong> 21 | <strong>Spring Boot:</strong> 4.0.0</p>
                 <p><strong>© 2025 KiSoft</strong></p>
             </div>
@@ -4065,6 +4050,9 @@ function showDetailDescription() {
         return;
     }
 
+    // Add help-modal class for resizable styling
+    modalEl.classList.add('help-modal');
+
     document.getElementById('resultModalTitle').innerHTML = '<i class="fas fa-book"></i> Detailed User Guide';
     document.getElementById('resultModalBody').innerHTML = helpContent;
 
@@ -4072,6 +4060,12 @@ function showDetailDescription() {
     header.className = 'modal-header bg-primary text-white';
 
     const modal = new bootstrap.Modal(modalEl);
+
+    // Remove help-modal class when modal is hidden (for other uses of the modal)
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        modalEl.classList.remove('help-modal');
+    }, { once: true });
+
     modal.show();
 }
 
@@ -4169,7 +4163,7 @@ function downloadBlob(blob, filename){ const a=document.createElement('a'); a.hr
  * @param {string} title - The modal title
  * @param {string} body - The modal body text
  */
-function showInfoModal(title, body){ const modalEl=document.getElementById('resultModal'); if(!modalEl){ alert(title+"\n\n"+body); return; } document.getElementById('resultModalTitle').innerText=title; document.getElementById('resultModalBody').innerText=body; const header=document.getElementById('resultModalHeader'); header.className='modal-header bg-info text-white'; const m=new bootstrap.Modal(modalEl); m.show(); }
+function showInfoModal(title, body){ const modalEl=document.getElementById('resultModal'); if(!modalEl){ alert(title+"\n\n"+body); return; } document.getElementById('resultModalTitle').innerText=title; document.getElementById('resultModalBody').innerHTML=body; const header=document.getElementById('resultModalHeader'); header.className='modal-header bg-info text-white'; const m=new bootstrap.Modal(modalEl); m.show(); }
 
 /**
  * Copies the selected photo (image) to the clipboard

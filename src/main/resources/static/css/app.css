@@ -324,6 +324,35 @@ body.theme-dark #editor *::selection {
 .result-modal .modal-header.error { background-color: #dc3545; color: white; }
 .result-modal .modal-header.partial { background-color: #ffc107; color: black; }
 
+/* Help modal - resizable and scrollable */
+.result-modal.help-modal .modal-dialog {
+    max-width: 80vw;
+    width: 900px;
+    max-height: 90vh;
+    resize: both;
+    overflow: auto;
+}
+.result-modal.help-modal .modal-content {
+    height: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    resize: both;
+    overflow: hidden;
+}
+.result-modal.help-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 200px;
+}
+.result-modal.help-modal .modal-header {
+    flex-shrink: 0;
+}
+.result-modal.help-modal .modal-footer {
+    flex-shrink: 0;
+}
+
 /* Template save/load buttons */
 .template-buttons { margin-top: 10px; }
 .template-buttons .btn { margin: 2px; }
@@ -1874,8 +1903,19 @@ body.theme-dark .help-footer {
     min-width: 50px;
 }
 
+/* Editor table cell class - matches JS insertTable() inline styles */
+.editor-table-cell {
+    border: 1px solid #ccc;
+    padding: 8px;
+    min-width: 50px;
+}
+
+/* Column resize handle - positioned at right edge of table cells */
 .table-col-handle {
     position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
     width: 8px;
     height: 100%;
     background: transparent;
@@ -1889,8 +1929,12 @@ body.theme-dark .help-footer {
     border-right-color: #667eea;
 }
 
+/* Row resize handle - positioned at bottom edge of table rows */
 .table-row-handle {
     position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
     width: 100%;
     height: 8px;
     background: transparent;
@@ -1904,8 +1948,11 @@ body.theme-dark .help-footer {
     border-bottom-color: #667eea;
 }
 
+/* Table corner resize handle - positioned at bottom-right corner */
 .table-resize-handle {
     position: absolute;
+    right: -6px;
+    bottom: -6px;
     width: 12px;
     height: 12px;
     background: #667eea;
@@ -1913,6 +1960,34 @@ body.theme-dark .help-footer {
     border-radius: 2px;
     cursor: nwse-resize;
     z-index: 20;
+}
+
+/* Table cells and tables need relative positioning for resize handles */
+.editor-table {
+    position: relative;
+}
+
+.editor-table td,
+.editor-table th {
+    position: relative;
+}
+
+/* Config status message styles */
+.config-status-success {
+    color: #28a745;
+}
+
+.config-status-error {
+    color: #dc3545;
+}
+
+.config-status-muted {
+    color: #666;
+}
+
+/* Body cursor reset class */
+.cursor-default {
+    cursor: default;
 }
 
 .img-float-left {
