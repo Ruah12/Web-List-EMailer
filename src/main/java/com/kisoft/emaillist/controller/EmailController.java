@@ -4,9 +4,12 @@ import com.kisoft.emaillist.model.EmailRequest;
 import com.kisoft.emaillist.model.SendResult;
 import com.kisoft.emaillist.service.EmailListService;
 import com.kisoft.emaillist.service.EmailSenderService;
-import lombok.RequiredArgsConstructor;
+import com.kisoft.emaillist.service.ExportService;
+import com.kisoft.emaillist.service.FacebookService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,34 +22,36 @@ import java.util.Map;
 
 /**
  * Email Controller - Handles all HTTP requests for the Email Mass Sender application.
- *
- * <p>This controller provides both view rendering and REST API endpoints for:</p>
- * <ul>
- *   <li>Main page rendering (Thymeleaf view)</li>
- *   <li>Email sending (individual and batch modes)</li>
- *   <li>Email list management (CRUD operations)</li>
- *   <li>Mail server connection testing</li>
- * </ul>
- *
- * <h3>Endpoints:</h3>
- * <table border="1">
- *   <tr><th>Method</th><th>Path</th><th>Description</th></tr>
- *   <tr><td>GET</td><td>/</td><td>Main page with email list</td></tr>
- *   <tr><td>POST</td><td>/api/send</td><td>Send emails (individual/batch)</td></tr>
- *   <tr><td>POST</td><td>/api/send-test</td><td>Send test email</td></tr>
- *   <tr><td>GET</td><td>/api/emails</td><td>Get all emails</td></tr>
- *   <tr><td>POST</td><td>/api/emails</td><td>Add single email</td></tr>
- *   <tr><td>DELETE</td><td>/api/emails</td><td>Remove single email</td></tr>
- *   <tr><td>POST</td><td>/api/emails/bulk</td><td>Replace entire email list</td></tr>
- *   <tr><td>GET</td><td>/api/test-connection</td><td>Test SMTP connection</td></tr>
- * </table>
- *
+ * This controller provides both view rendering and REST API endpoints for:
+ * - Main page rendering (Thymeleaf view)
+ * - Email sending (individual and batch modes)
+ * - Email list management (CRUD operations)
+ * - Mail server connection testing
+ * - Export to PDF and DOCX formats
+ * - Facebook posting integration
+ * REST API Endpoints:
+ * - {@code GET /} - Main page with email list
+ * - {@code POST /api/send} - Send emails (individual/batch)
+ * - {@code POST /api/send-test} - Send test email
+ * - {@code GET /api/emails} - Get all emails
+ * - {@code POST /api/emails} - Add single email
+ * - {@code DELETE /api/emails} - Remove single email
+ * - {@code POST /api/emails/bulk} - Replace entire email list
+ * - {@code GET /api/test-connection} - Test SMTP connection
+ * - {@code POST /api/export/pdf} - Export to PDF
+ * - {@code POST /api/export/docx} - Export to DOCX
+ * - {@code POST /api/facebook/post} - Post to Facebook
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see com.kisoft.emaillist.service.EmailSenderService
+ * @see com.kisoft.emaillist.service.EmailListService
+ * @see com.kisoft.emaillist.service.ExportService
+ * @see com.kisoft.emaillist.service.FacebookService
+ * @see com.kisoft.emaillist.model.EmailRequest
+ * @see com.kisoft.emaillist.model.SendResult
  */
 @Controller
-@RequiredArgsConstructor
 @Slf4j
 public class EmailController {
 
@@ -56,17 +61,40 @@ public class EmailController {
     /** Service for managing the email recipient list */
     private final EmailListService emailListService;
 
+    /** Service for posting to Facebook */
+    private final FacebookService facebookService;
+
+    /** Service for exporting to PDF/DOCX */
+    private final ExportService exportService;
+
     /** Default text color for the editor (from application.properties) */
-    @Value("${app.editor.default.text.color:white}")
+    @Value("${app.editor.default.text.color:#000000}")
     private String editorDefaultTextColor;
+
+    /** Number of template slots available (from application.properties) */
+    @Value("${app.template.slots:5}")
+    private int templateSlots;
+
+    /** Whether Facebook integration is enabled */
+    @Value("${facebook.enabled:false}")
+    private boolean facebookEnabled;
+
+    public EmailController(EmailSenderService emailSenderService,
+                          EmailListService emailListService,
+                          FacebookService facebookService,
+                          ExportService exportService) {
+        this.emailSenderService = emailSenderService;
+        this.emailListService = emailListService;
+        this.facebookService = facebookService;
+        this.exportService = exportService;
+    }
 
     /**
      * Renders the main application page.
-     *
-     * <p>Loads the email list and passes it to the Thymeleaf template.</p>
-     *
+     * Loads the email list and passes it to the Thymeleaf template along with
+     * configuration values for the editor and template slots.
      * @param model Spring MVC model for template data binding
-     * @return Template name "index" (resolves to index.html)
+     * @return Template name {@code index} (resolves to {@code index.html})
      */
     @GetMapping("/")
     public String index(Model model) {
@@ -74,26 +102,21 @@ public class EmailController {
         model.addAttribute("emails", emails);
         model.addAttribute("emailCount", emails.size());
         model.addAttribute("editorDefaultTextColor", editorDefaultTextColor);
+        model.addAttribute("templateSlots", templateSlots);
+        model.addAttribute("facebookEnabled", facebookService.isEnabled());
         return "index";
     }
 
     /**
      * Sends emails to selected recipients.
-     *
-     * <p>Supports two sending modes:</p>
-     * <ul>
-     *   <li><b>individual</b>: Send one email per recipient sequentially</li>
-     *   <li><b>batch</b>: Send to multiple recipients per email (BCC/To)</li>
-     * </ul>
-     *
-     * <p>Address modes:</p>
-     * <ul>
-     *   <li><b>to</b>: Recipients visible to each other</li>
-     *   <li><b>bcc</b>: Recipients hidden from each other</li>
-     * </ul>
-     *
-     * @param request Email request containing subject, content, recipients, and options
-     * @return SendResult with success/fail counts and error details
+     * Supports two sending modes:
+     * - {@code individual} - Send one email per recipient sequentially
+     * - {@code batch} - Send to multiple recipients per email (BCC/To)
+     * Address modes:
+     * - {@code to} - Recipients visible to each other
+     * - {@code bcc} - Recipients hidden from each other (recommended for mass emails)
+     * @param request {@link EmailRequest} containing subject, content, recipients, and options
+     * @return {@link SendResult} with success/fail counts and error details
      */
     @PostMapping("/api/send")
     @ResponseBody
@@ -243,10 +266,8 @@ public class EmailController {
 
     /**
      * Tests the SMTP server connection.
-     *
-     * <p>Called periodically by the UI to update connection status badge.</p>
-     *
-     * @return Connection status (connected: true/false) with message
+     * Called periodically by the UI to update connection status badge.
+     * @return Connection status ({@code connected: true/false}) with message
      */
     @GetMapping("/api/test-connection")
     @ResponseBody
@@ -257,5 +278,217 @@ public class EmailController {
         response.put("message", connected ? "Mail server connection OK" : "Mail server connection failed");
         return ResponseEntity.ok(response);
     }
-}
 
+    /**
+     * Posts content to Facebook.
+     *
+     * @param request Request containing subject and HTML content
+     * @return Success/failure response with message
+     */
+    @PostMapping("/api/facebook/post")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> postToFacebook(@RequestBody EmailRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (!facebookService.isEnabled()) {
+                response.put("success", false);
+                response.put("message", "Facebook integration is not enabled. Please configure facebook.access.token and facebook.page.id in application.properties.");
+                return ResponseEntity.ok(response);
+            }
+
+            FacebookService.FacebookPostResult result = facebookService.postToPage(
+                    request.getSubject(),
+                    request.getHtmlContent()
+            );
+
+            response.put("success", result.success());
+            response.put("message", result.message());
+            if (result.apiResponse() != null) {
+                response.put("apiResponse", result.apiResponse());
+            }
+        } catch (Exception e) {
+            log.error("Error posting to Facebook: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Failed to post to Facebook: " + e.getMessage());
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Tests Facebook connection.
+     *
+     * @return Connection status
+     */
+    @GetMapping("/api/facebook/test")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> testFacebookConnection() {
+        Map<String, Object> response = new HashMap<>();
+        boolean connected = facebookService.testConnection();
+        response.put("connected", connected);
+        response.put("enabled", facebookService.isEnabled());
+        response.put("message", connected ? "Facebook is configured" : "Facebook is not configured");
+        return ResponseEntity.ok(response);
+    }
+
+    /* =========================================================================
+       EXPORT ENDPOINTS - PDF and DOCX
+       ========================================================================= */
+
+    /**
+     * Export request model for PDF/DOCX export.
+     */
+    public record ExportRequest(String subject, String htmlContent) {}
+
+    /**
+     * Exports email content to PDF format.
+     *
+     * @param request The export request containing subject and HTML content
+     * @return PDF file as byte array
+     */
+    @PostMapping("/api/export/pdf")
+    @ResponseBody
+    public ResponseEntity<byte[]> exportToPdf(@RequestBody ExportRequest request) {
+        log.info("PDF export requested. Subject: {}", request.subject());
+
+        try {
+            byte[] pdfBytes = exportService.exportToPdf(request.subject(), request.htmlContent());
+
+            String filename = sanitizeFilename(request.subject()) + ".pdf";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentLength(pdfBytes.length);
+
+            log.info("PDF export successful. Size: {} bytes, Filename: {}", pdfBytes.length, filename);
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+
+        } catch (Exception e) {
+            log.error("PDF export failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Exports email content to DOCX (Microsoft Word) format.
+     *
+     * @param request The export request containing subject and HTML content
+     * @return DOCX file as byte array
+     */
+    @PostMapping("/api/export/docx")
+    @ResponseBody
+    public ResponseEntity<byte[]> exportToDocx(@RequestBody ExportRequest request) {
+        log.info("DOCX export requested. Subject: {}", request.subject());
+
+        try {
+            byte[] docxBytes = exportService.exportToDocx(request.subject(), request.htmlContent());
+
+            String filename = sanitizeFilename(request.subject()) + ".docx";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+            headers.setContentDispositionFormData("attachment", filename);
+            headers.setContentLength(docxBytes.length);
+
+            log.info("DOCX export successful. Size: {} bytes, Filename: {}", docxBytes.length, filename);
+            return ResponseEntity.ok().headers(headers).body(docxBytes);
+
+        } catch (Exception e) {
+            log.error("DOCX export failed: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Logs template load/save operations on the server side.
+     * Provides detailed logging for debugging and audit purposes.
+     *
+     * @param request The template log request containing operation details
+     * @return Success response
+     */
+    @PostMapping("/api/template/log")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> logTemplateOperation(@RequestBody TemplateLogRequest request) {
+        String timestamp = java.time.Instant.now().toString();
+
+        log.info("========================================");
+        log.info("[Template {}] Timestamp: {}", request.operation(), timestamp);
+        log.info("[Template {}] Slot: {}", request.operation(), request.slot());
+        log.info("[Template {}] Subject: {}", request.operation(),
+                request.subject() != null ? request.subject() : "(empty)");
+        log.info("[Template {}] Content length: {} chars", request.operation(),
+                request.contentLength() != null ? request.contentLength() : 0);
+        log.info("[Template {}] Storage: browser localStorage (key: emailTemplate{})",
+                request.operation(), request.slot());
+
+        if (request.imageCount() != null && request.imageCount() > 0) {
+            log.info("[Template {}] Images: {} found", request.operation(), request.imageCount());
+            if (request.imageDetails() != null && !request.imageDetails().isEmpty()) {
+                for (int i = 0; i < request.imageDetails().size(); i++) {
+                    var imgDetail = request.imageDetails().get(i);
+                    log.info("  [Image {}] Type: {} | Size: {} | Dimensions: {} | Filename: {} | Path: {}",
+                            i + 1,
+                            imgDetail.get("type"),
+                            imgDetail.get("size"),
+                            imgDetail.get("dimensions"),
+                            imgDetail.get("filename"),
+                            imgDetail.get("filePath") != null ? imgDetail.get("filePath") : "(embedded base64)");
+                }
+            }
+        } else {
+            log.info("[Template {}] No images in template", request.operation());
+        }
+
+        if (request.tableCount() != null && request.tableCount() > 0) {
+            log.info("[Template {}] Tables: {} found", request.operation(), request.tableCount());
+        }
+
+        if (request.linkCount() != null && request.linkCount() > 0) {
+            log.info("[Template {}] Links: {}", request.operation(), request.linkCount());
+        }
+
+        log.info("[Template {}] Operation completed", request.operation());
+        log.info("========================================");
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "logged");
+        response.put("timestamp", timestamp);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Request record for template logging.
+     */
+    public record TemplateLogRequest(
+        String operation,
+        Integer slot,
+        String subject,
+        Integer contentLength,
+        Integer imageCount,
+        Integer tableCount,
+        Integer linkCount,
+        java.util.List<java.util.Map<String, String>> imageDetails
+    ) {}
+
+    /**
+     * Sanitizes a filename by removing/replacing invalid characters.
+     *
+     * @param filename The original filename
+     * @return Sanitized filename safe for file systems
+     */
+    private String sanitizeFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "export";
+        }
+        // Remove or replace invalid filename characters
+        String sanitized = filename
+                .replaceAll("[\\\\/:*?\"<>|]", "_")
+                .replaceAll("\\s+", "_")
+                .trim();
+        // Limit length
+        if (sanitized.length() > 100) {
+            sanitized = sanitized.substring(0, 100);
+        }
+        return sanitized.isEmpty() ? "export" : sanitized;
+    }
+}

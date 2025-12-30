@@ -25,37 +25,29 @@ import org.jsoup.nodes.Node;
 
 /**
  * Email Sender Service - Sends emails via SMTP using Spring JavaMail.
- *
- * <p>This service provides multiple sending strategies:</p>
- * <ul>
- *   <li><b>Individual</b>: Send one email per recipient (slower but more reliable)</li>
- *   <li><b>Batch</b>: Send to multiple recipients per email (faster but riskier)</li>
- * </ul>
- *
- * <h3>Address Modes:</h3>
- * <ul>
- *   <li><b>To</b>: Recipients see each other's addresses</li>
- *   <li><b>BCC</b>: Recipients are hidden from each other (recommended for mass emails)</li>
- * </ul>
- *
- * <h3>HTML Conversion:</h3>
- * <p>The service includes a sophisticated HTML converter that transforms editor HTML
+     * This service provides multiple sending strategies:
+ * - Individual: Send one email per recipient (slower but more reliable)
+ * - Batch: Send to multiple recipients per email (faster but riskier)
+ * Address Modes:
+ * - To: Recipients see each other's addresses
+ * - BCC: Recipients are hidden from each other (recommended for mass emails)
+ * HTML Conversion:
+ * The service includes a sophisticated HTML converter that transforms editor HTML
  * (which uses CSS floats) into email-client-compatible HTML (using tables). This ensures
- * images and text appear side-by-side in email clients like Outlook that don't support floats.</p>
- *
- * <h3>Key Features:</h3>
- * <ul>
- *   <li>Configurable from-address and name</li>
- *   <li>UTF-8 encoding support</li>
- *   <li>HTML email with inline styles</li>
- *   <li>Automatic image-to-table conversion</li>
- *   <li>Rate limiting between sends</li>
- *   <li>Detailed error tracking per recipient</li>
- * </ul>
- *
+ * images and text appear side-by-side in email clients like Outlook that don't support floats.
+ * Key Features:
+ * - Configurable from-address and name via {@code mail.from} and {@code mail.from.name}
+ * - UTF-8 encoding support
+ * - HTML email with inline styles
+ * - Automatic image-to-table conversion for Outlook compatibility
+ * - Rate limiting between sends via {@code delayMs} parameter
+ * - Detailed error tracking per recipient
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see com.kisoft.emaillist.controller.EmailController
+ * @see com.kisoft.emaillist.model.SendResult
+ * @see org.springframework.mail.javamail.JavaMailSender
  */
 @Service
 @RequiredArgsConstructor
@@ -75,18 +67,16 @@ public class EmailSenderService {
 
     /**
      * Sends emails in batch mode to multiple recipients per email.
-     *
-     * <p>Groups recipients into batches of the specified size and sends
+     * Groups recipients into batches of the specified size and sends
      * one email per batch. This is faster than individual sending but
-     * riskier (if one batch fails, all recipients in that batch fail).</p>
-     *
+     * riskier (if one batch fails, all recipients in that batch fail).
      * @param emails List of all recipient email addresses
      * @param subject Email subject line
      * @param htmlContent HTML body content
      * @param batchSize Number of recipients per batch email
-     * @param useBcc If true, recipients go in BCC field; if false, in To field
+     * @param useBcc If {@code true}, recipients go in BCC field; if {@code false}, in To field
      * @param delayMs Delay in milliseconds between batch sends
-     * @return SendResult with success/failure counts and error details
+     * @return {@link SendResult} with success/failure counts and error details
      */
     public SendResult sendBatch(List<String> emails, String subject, String htmlContent, int batchSize, boolean useBcc, int delayMs) {
         int total = emails.size();
@@ -218,20 +208,16 @@ public class EmailSenderService {
 
     /**
      * Converts editor HTML into email-client-compatible HTML.
-     *
-     * <p>Problem this solves:</p>
-     * <ul>
-     *   <li>Browsers render CSS floats well, but many email clients (notably Outlook) ignore/limit floats</li>
-     *   <li>Without conversion, an "image left + text right" layout often collapses to "image top, text bottom"</li>
-     *   <li>Image dimensions from editor resize may not translate correctly to email</li>
-     * </ul>
-     *
-     * <p>Strategy:</p>
-     * <ol>
-     *   <li>Convert floated images to table layout for side-by-side rendering</li>
-     *   <li>Normalize ALL images to ensure width is preserved and height:auto is used</li>
-     *   <li>Remove height attributes to prevent disproportionate scaling</li>
-     * </ol>
+     * Problem this solves:
+     * - Browsers render CSS floats well, but many email clients (notably Outlook) ignore/limit floats
+     * - Without conversion, an "image left + text right" layout often collapses to "image top, text bottom"
+     * - Image dimensions from editor resize may not translate correctly to email
+     * Strategy:
+     * 1. Convert floated images to table layout for side-by-side rendering
+     * 2. Normalize ALL images to ensure width is preserved and {@code height:auto} is used
+     * 3. Remove height attributes to prevent disproportionate scaling
+     * @param htmlContent The raw HTML from the editor
+     * @return Email-safe HTML wrapped in a responsive template
      */
     private String convertToEmailSafeHtml(String htmlContent) {
         if (htmlContent == null || htmlContent.isBlank()) {
@@ -382,17 +368,13 @@ public class EmailSenderService {
 
     /**
      * Normalizes inline font-size declarations to px.
-     *
-     * <p>Why: Browsers and Outlook (Word engine) differ in how they interpret pt/px and how they round.
-     * Converting everything to px makes sizing more deterministic and helps match the editor preview.</p>
-     *
-     * <p>Supported inputs:</p>
-     * <ul>
-     *   <li>font-size: 12px</li>
-     *   <li>font-size: 9pt (converted to ~12px)</li>
-     * </ul>
-     *
-     * <p>Note: We keep only integer px sizes because that's the most compatible form for email clients.</p>
+     * Why: Browsers and Outlook (Word engine) differ in how they interpret pt/px and how they round.
+     * Converting everything to px makes sizing more deterministic and helps match the editor preview.
+     * Supported inputs:
+     * - {@code font-size: 12px} - kept as-is
+     * - {@code font-size: 9pt} - converted to ~12px (1pt = 1.333px)
+     * Note: We keep only integer px sizes because that's the most compatible form for email clients.
+     * @param body The HTML body element to process
      */
     private static void normalizeInlineFontSizesToPx(Element body) {
         java.util.regex.Pattern fontSizePattern = java.util.regex.Pattern.compile(
@@ -522,18 +504,13 @@ public class EmailSenderService {
 
     /**
      * Builds a two-column table layout for an image and adjacent text.
-     *
-     * <p>This creates an email-compatible table structure that ensures the image
+     * This creates an email-compatible table structure that ensures the image
      * appears on the left and text on the right, which works in all email clients
-     * including Outlook.</p>
-     *
-     * <p>CRITICAL: Image dimensions are handled carefully:</p>
-     * <ul>
-     *   <li>Width is set from user's resize operation (preserving exact size)</li>
-     *   <li>Height is NEVER set as an attribute - only height:auto in style</li>
-     *   <li>This ensures proportional scaling in all email clients</li>
-     * </ul>
-     *
+     * including Outlook.
+     * CRITICAL: Image dimensions are handled carefully:
+     * - Width is set from user's resize operation (preserving exact size)
+     * - Height is NEVER set as an attribute - only {@code height:auto} in style
+     * - This ensures proportional scaling in all email clients
      * @param img The original image element
      * @param textNodes The text nodes to place in the right column
      * @param imgWidthPx The width in pixels for the image
@@ -799,15 +776,11 @@ public class EmailSenderService {
 
     /**
      * Normalizes image styles for email compatibility.
-     *
-     * <p>This method ensures images display correctly in email clients by:</p>
-     * <ul>
-     *   <li>Removing float (tables handle positioning)</li>
-     *   <li>Preserving user-specified width from resize</li>
-     *   <li>Forcing height:auto for proportional scaling</li>
-     *   <li>Adding email-compatible display properties</li>
-     * </ul>
-     *
+     * This method ensures images display correctly in email clients by:
+     * - Removing float (tables handle positioning)
+     * - Preserving user-specified width from resize
+     * - Forcing {@code height:auto} for proportional scaling
+     * - Adding email-compatible display properties
      * @param originalStyle The original CSS style string from the image
      * @param img The image element (to extract width attribute if needed)
      * @return Normalized style string for email
@@ -876,15 +849,11 @@ public class EmailSenderService {
 
     /**
      * Wraps content in a complete HTML email template.
-     *
-     * <p>Creates a full HTML document with:</p>
-     * <ul>
-     *   <li>Proper DOCTYPE and XML namespaces for Outlook</li>
-     *   <li>MSO conditional comments for Outlook-specific styles</li>
-     *   <li>Base font settings (Arial, 14px, 1.5 line-height)</li>
-     *   <li>Reset styles for consistent rendering</li>
-     * </ul>
-     *
+     * Creates a full HTML document with:
+     * - Proper DOCTYPE and XML namespaces for Outlook
+     * - MSO conditional comments for Outlook-specific styles
+     * - Base font settings (Arial, 14px, 1.5 line-height)
+     * - Reset styles for consistent rendering
      * @param content The HTML body content to wrap
      * @return Complete HTML document string
      */

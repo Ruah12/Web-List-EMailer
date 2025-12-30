@@ -6,25 +6,22 @@ import lombok.NoArgsConstructor;
 
 /**
  * Email Request DTO - Contains all parameters for a send email request.
- *
- * <p>This class is used to deserialize JSON requests from the frontend
- * for the /api/send endpoint.</p>
- *
- * <h3>Fields:</h3>
- * <ul>
- *   <li><b>subject</b>: Email subject line</li>
- *   <li><b>htmlContent</b>: HTML body of the email</li>
- *   <li><b>sendToAll</b>: If true, send to all emails in the list</li>
- *   <li><b>selectedEmails</b>: Array of selected recipient addresses</li>
- *   <li><b>sendMode</b>: "batch" or "individual"</li>
- *   <li><b>addressMode</b>: "to" or "bcc"</li>
- *   <li><b>batchSize</b>: Number of recipients per batch (default: 10)</li>
- *   <li><b>delayMs</b>: Delay between sends in milliseconds (default: 500)</li>
- * </ul>
- *
+ * This class is used to deserialize JSON requests from the frontend
+ * for the {@code /api/send} endpoint.
+ * Fields:
+ * - {@code subject} - Email subject line
+ * - {@code htmlContent} - HTML body of the email
+ * - {@code sendToAll} - If true, send to all emails in the list
+ * - {@code selectedEmails} - Array of selected recipient addresses
+ * - {@code sendMode} - {@code "batch"} or {@code "individual"}
+ * - {@code addressMode} - {@code "to"} or {@code "bcc"}
+ * - {@code batchSize} - Number of recipients per batch (default: 10)
+ * - {@code delayMs} - Delay between sends in milliseconds (default: 500)
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see com.kisoft.emaillist.controller.EmailController
+ * @see com.kisoft.emaillist.service.EmailSenderService
  */
 @Data
 @NoArgsConstructor

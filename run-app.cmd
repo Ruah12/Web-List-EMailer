@@ -6,7 +6,7 @@ set "PROJECT_DIR=%~dp0"
 pushd "%PROJECT_DIR%"
 if errorlevel 1 goto :fail_dir
 
-set "JAR_PATH=target\Web-List-EMailer-0.0.1-SNAPSHOT.jar"
+set "JAR_PATH=target\Web-List-EMailer-0.0.12-SNAPSHOT.jar"
 set "PORT=8082"
 set "JAVA_CMD=java"
 

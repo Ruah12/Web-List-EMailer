@@ -11,18 +11,20 @@ import java.awt.Desktop;
 import java.net.URI;
 
 /**
- * Browser Launcher Component
- *
- * <p>Automatically opens the application in the default system browser
- * when the Spring Boot application has fully started. This works when
- * running from IntelliJ, command line, or any other method.</p>
- *
- * <p>The browser launch can be disabled by setting the property
- * {@code app.browser.open=false} in application.properties.</p>
- *
+ * Browser Launcher Component - Automatically opens the application in the default browser.
+ * This component listens for {@link org.springframework.boot.context.event.ApplicationReadyEvent}
+ * and opens the application URL in the system's default web browser. Works when
+ * running from IntelliJ, command line, or any other method.
+ * The browser launch can be disabled by setting {@code app.browser.open=false}
+ * in {@code application.properties}.
+ * Configuration:
+ * - {@code server.port} - Port number (default: 8082)
+ * - {@code app.browser.open} - Enable/disable auto-open (default: true)
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see java.awt.Desktop
+ * @see org.springframework.boot.context.event.ApplicationReadyEvent
  */
 @Component
 public class BrowserLauncher {
@@ -37,13 +39,10 @@ public class BrowserLauncher {
 
     /**
      * Opens the default browser to the application URL when the application is ready.
-     *
-     * <p>This method is triggered by Spring's ApplicationReadyEvent, which fires
-     * after the application context is fully initialized and all beans are ready.</p>
-     *
-     * <p>Uses Java's Desktop API to open the system default browser. If the Desktop
-     * API is not supported (e.g., headless environment), falls back to OS-specific
-     * commands.</p>
+     * This method is triggered by Spring's {@link org.springframework.boot.context.event.ApplicationReadyEvent},
+     * which fires after the application context is fully initialized and all beans are ready.
+     * Uses Java's {@link java.awt.Desktop} API to open the system default browser. If the Desktop
+     * API is not supported (e.g., headless environment), falls back to OS-specific commands.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void openBrowser() {

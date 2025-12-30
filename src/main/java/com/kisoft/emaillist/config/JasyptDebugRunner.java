@@ -7,28 +7,21 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Jasypt Debug Runner - Verifies encrypted property decryption at startup.
- *
- * <p>This component runs at application startup to verify that Jasypt
- * encryption is working correctly. It checks if the mail password
- * has been properly decrypted from the ENC(...) format.</p>
- *
- * <h3>Purpose:</h3>
- * <ul>
- *   <li>Detect misconfigured Jasypt encryption early</li>
- *   <li>Log helpful debug information without exposing the full password</li>
- *   <li>Alert developers if the password remains encrypted (missing key)</li>
- * </ul>
- *
- * <h3>Configuration:</h3>
- * <p>Requires the Jasypt encryption password to be set via:</p>
- * <ul>
- *   <li>Environment variable: JASYPT_ENCRYPTOR_PASSWORD</li>
- *   <li>System property: jasypt.encryptor.password</li>
- * </ul>
- *
+ * This component implements {@link org.springframework.boot.CommandLineRunner} and runs
+ * at application startup to verify that Jasypt encryption is working correctly.
+ * It checks if the mail password has been properly decrypted from the {@code ENC(...)} format.
+ * Purpose:
+ * - Detect misconfigured Jasypt encryption early
+ * - Log helpful debug information without exposing the full password
+ * - Alert developers if the password remains encrypted (missing key)
+ * Configuration:
+ * Requires the Jasypt encryption password to be set via:
+ * - Environment variable: {@code JASYPT_ENCRYPTOR_PASSWORD}
+ * - System property: {@code jasypt.encryptor.password}
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see org.springframework.boot.CommandLineRunner
  * @see com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties
  */
 @Component
@@ -41,11 +34,9 @@ public class JasyptDebugRunner implements CommandLineRunner {
 
     /**
      * Runs at application startup to verify Jasypt decryption.
-     *
-     * <p>Logs whether the password was successfully decrypted. If the password
-     * still starts with "ENC(", it means Jasypt failed to decrypt it (likely
-     * due to missing or incorrect encryption key).</p>
-     *
+     * Logs whether the password was successfully decrypted. If the password
+     * still starts with {@code ENC(}, it means Jasypt failed to decrypt it
+     * (likely due to missing or incorrect encryption key).
      * @param args Command line arguments (not used)
      * @throws Exception If an error occurs during execution
      */

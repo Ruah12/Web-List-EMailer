@@ -99,21 +99,93 @@ Dependencies:
                  ============================================================ -->
             <div class="col-compose">
                 <div class="card h-100">
-                    <!-- Card Header with title and branding -->
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span title="Email composition area"><i class="fas fa-edit"></i> Compose Email</span>
-                        <span title="Web-List-EMailer Application"><i class="fas fa-envelope"></i> Email Mass Sender</span>
+                    <!-- Card Header with title, menu bar, and branding -->
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <span title="Email composition area"><i class="fas fa-edit"></i> Compose Email</span>
+                                <!-- Menu Bar integrated into header -->
+                                <ul class="nav nav-pills gap-2 header-menu">
+                            <!-- File Menu -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">File</a>
+                                <ul class="dropdown-menu">
+                                    <li class="dropdown-header">Templates</li>
+                                    <!-- Save Template Submenu -->
+                                    <li class="dropdown dropend">
+                                        <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">Save Template</a>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" id="saveTemplateSlot1" onclick="saveTemplate(1);return false;">Save to Slot 1</a></li>
+                                            <li><a class="dropdown-item" href="#" id="saveTemplateSlot2" onclick="saveTemplate(2);return false;">Save to Slot 2</a></li>
+                                            <li><a class="dropdown-item" href="#" id="saveTemplateSlot3" onclick="saveTemplate(3);return false;">Save to Slot 3</a></li>
+                                            <li><a class="dropdown-item" href="#" id="saveTemplateSlot4" onclick="saveTemplate(4);return false;">Save to Slot 4</a></li>
+                                            <li><a class="dropdown-item" href="#" id="saveTemplateSlot5" onclick="saveTemplate(5);return false;">Save to Slot 5</a></li>
+                                        </ul>
+                                    </li>
+                                    <!-- Load Template Submenu -->
+                                    <li class="dropdown dropend">
+                                        <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">Load Template</a>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="loadTemplate(1);return false;">Load from Slot 1</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="loadTemplate(2);return false;">Load from Slot 2</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="loadTemplate(3);return false;">Load from Slot 3</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="loadTemplate(4);return false;">Load from Slot 4</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="loadTemplate(5);return false;">Load from Slot 5</a></li>
+                                        </ul>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">Export</li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToTxt();return false;">Export to TXT</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToPdf();return false;">Export to PDF</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToHtml();return false;">Export to HTML</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportToDocx();return false;">Export to Microsoft Word</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="printMessageEditor();return false;">Print…</a></li>
+                                </ul>
+                            </li>
+                            <!-- Edit Menu -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Edit</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="execCmd('copy');return false;">Copy</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="execCmd('cut');return false;">Cut</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="execCmd('paste');return false;">Paste</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">Photo</li>
+                                    <li><a class="dropdown-item" href="#" onclick="photoCopy();return false;">Copy Photo</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="photoCut();return false;">Cut Photo</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="photoPaste();return false;">Paste Photo</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="showPreviousResult();return false;">Previous Result</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="showNextResult();return false;">Next Result</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="openConfiguration(true);return false;">Configuration…</a></li>
+                                </ul>
+                            </li>
+                            <!-- View Menu -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">View</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="setTheme('light');return false;">Light</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="setTheme('dark');return false;">Dark</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="#" onclick="toggleInvisibleSymbols();return false;">Show/Hide Invisible Symbols</a></li>
+                                </ul>
+                            </li>
+                            <!-- Help Menu -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Help</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="showAbout();return false;">About</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="showDetailDescription();return false;">Detail Description</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                            </div>
+                            <span title="Web-List-EMailer Application"><i class="fas fa-envelope"></i> Email Mass Sender</span>
+                        </div>
                     </div>
                     <div class="card-body d-flex flex-column">
-
-                        <!-- ------------------------------------------------
-                             SUBJECT LINE INPUT
-                             Auto-filled with next Sunday's date on page load
-                             ------------------------------------------------ -->
-                        <div class="mb-3 d-flex align-items-center">
-                            <label for="subject" class="form-label mb-0 me-2" title="Email subject line - auto-filled with next Sunday's date"><strong>Subject:</strong></label>
-                            <input type="text" class="form-control" id="subject" placeholder="Subject will be filled automatically..." title="Enter the email subject line. Auto-filled with next Sunday's date on page load.">
-                        </div>
 
                         <!-- ------------------------------------------------
                              MESSAGE EDITOR SECTION
@@ -121,157 +193,199 @@ Dependencies:
                              ------------------------------------------------ -->
                         <div class="mb-2 flex-grow-1 d-flex flex-column">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label class="form-label mb-0" title="Rich text email body editor - supports formatting, images, and links"><strong>Message:</strong></label>
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    <label class="form-label mb-0 me-3" style="white-space: nowrap;" title="Rich text email body editor - supports formatting, images, and links"><strong>Message Editor:</strong></label>
+                                    <label for="subject" class="form-label mb-0 me-2" title="Email subject line - auto-filled with next Sunday's date"><strong>Subject:</strong></label>
+                                    <input type="text" class="form-control" id="subject" placeholder="Subject will be filled automatically..." title="Enter the email subject line. Auto-filled with next Sunday's date on page load.">
+                                </div>
                             </div>
 
                             <!-- ============================================
-                                 OUTLOOK-STYLE EDITOR TOOLBAR
-                                 Two rows of formatting tools organized into
-                                 logical groups with visual separators.
+                                 EDITOR TOOLBAR - Organized by Functionality
 
-                                 Row 1: Clipboard | Font Selection | Lists | Clear
-                                 Row 2: Styles | Colors | Alignment | Spacing | Insert
+                                 ROW 1: Clipboard | Font | Format | Colors
+                                 ROW 2: Paragraph | Insert | Table | Image | View
                                  ============================================ -->
                             <div class="editor-ribbon-compact">
 
-                                <!-- ROW 1: Clipboard, Font Selection, Lists, Clear -->
+                                <!-- ROW 1: Clipboard | Font | Format | Colors -->
                                 <div class="ribbon-row-compact">
 
-                                    <!-- Clipboard Group: Paste, Cut, Copy, Format Painter, Undo, Redo -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary ribbon-btn-paste" data-cmd="paste" title="Paste (Ctrl+V)">
-                                            <i class="fas fa-paste"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="cut" title="Cut (Ctrl+X)"><i class="fas fa-cut"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="copy" title="Copy (Ctrl+C)"><i class="fas fa-copy"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="formatPainter" title="Format Painter"><i class="fas fa-paint-brush"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="undo" title="Undo (Ctrl+Z) - Click repeatedly to undo multiple actions"><i class="fas fa-undo"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="redo" title="Redo (Ctrl+Y) - Click repeatedly to redo multiple actions"><i class="fas fa-redo"></i></button>
+                                    <!-- ═══════════ CLIPBOARD SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Clipboard">
+                                        <div class="ribbon-section-label">Clipboard</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary ribbon-btn-paste" data-cmd="paste" title="Paste (Ctrl+V)"><i class="fas fa-paste"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="cut" title="Cut (Ctrl+X)"><i class="fas fa-cut"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="copy" title="Copy (Ctrl+C)"><i class="fas fa-copy"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="formatPainter" title="Format Painter"><i class="fas fa-paint-brush"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="undo" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="redo" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+                                        </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Font Family & Size Group -->
-                                    <div class="ribbon-group">
-                                        <!-- Font Family Dropdown -->
-                                        <select class="form-select form-select-sm" id="fontFamily" title="Font Family - Select typeface for selected text">
-                                            <option value="Arial">Arial</option>
-                                            <option value="Calibri" selected>Calibri</option>
-                                            <option value="Times New Roman">Times New Roman</option>
-                                            <option value="Verdana">Verdana</option>
-                                            <option value="Georgia">Georgia</option>
-                                            <option value="Tahoma">Tahoma</option>
-                                            <option value="Trebuchet MS">Trebuchet MS</option>
-                                            <option value="Courier New">Courier New</option>
-                                            <option value="Comic Sans MS">Comic Sans MS</option>
-                                        </select>
-                                        <!-- Font Size Dropdown (values 1-7 map to HTML font sizes) -->
-                                        <!-- Small sizes will be converted to minimum 14px when sending email -->
-                                        <select class="form-select form-select-sm" id="fontSize" title="Font Size - Small sizes auto-convert to 14px in email for Outlook compatibility">
-                                            <option value="1">8</option>
-                                            <option value="2">10</option>
-                                            <option value="3">12</option>
-                                            <option value="4" selected>14</option>
-                                            <option value="5">18</option>
-                                            <option value="6">24</option>
-                                            <option value="7">36</option>
-                                        </select>
-                                        <!-- Grow/Shrink Font Buttons -->
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="increaseFontSize" title="Grow Font (Ctrl+Shift+>)"><i class="fas fa-font"></i><sup>▲</sup></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="decreaseFontSize" title="Shrink Font (Ctrl+Shift+<)"><i class="fas fa-font" style="font-size:10px"></i><sub>▼</sub></button>
+                                    <!-- ═══════════ FONT SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Font">
+                                        <div class="ribbon-section-label">Font</div>
+                                        <div class="ribbon-group">
+                                            <select class="form-select form-select-sm" id="fontFamily" title="Font Family">
+                                                <option value="Arial">Arial</option>
+                                                <option value="Calibri" selected>Calibri</option>
+                                                <option value="Times New Roman">Times New Roman</option>
+                                                <option value="Verdana">Verdana</option>
+                                                <option value="Georgia">Georgia</option>
+                                                <option value="Tahoma">Tahoma</option>
+                                                <option value="Trebuchet MS">Trebuchet MS</option>
+                                                <option value="Courier New">Courier New</option>
+                                                <option value="Comic Sans MS">Comic Sans MS</option>
+                                            </select>
+                                            <select class="form-select form-select-sm" id="fontSize" title="Font Size">
+                                                <option value="1">8</option>
+                                                <option value="2">10</option>
+                                                <option value="3">12</option>
+                                                <option value="4" selected>14</option>
+                                                <option value="5">18</option>
+                                                <option value="6">24</option>
+                                                <option value="7">36</option>
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="increaseFontSize" title="Grow Font"><i class="fas fa-font"></i><sup>▲</sup></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="decreaseFontSize" title="Shrink Font"><i class="fas fa-font" style="font-size:10px"></i><sub>▼</sub></button>
+                                        </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Lists & Indent Group -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Bullets"><i class="fas fa-list-ul"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Numbering"><i class="fas fa-list-ol"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="outdent" title="Decrease Indent"><i class="fas fa-outdent"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="indent" title="Increase Indent"><i class="fas fa-indent"></i></button>
+                                    <!-- ═══════════ FORMAT SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Format">
+                                        <div class="ribbon-section-label">Format</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="italic" title="Italic (Ctrl+I)"><i><b>I</b></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="underline" title="Underline (Ctrl+U)"><u><b>U</b></u></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="strikeThrough" title="Strikethrough"><s>ab</s></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="subscript" title="Subscript">X<sub>2</sub></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="superscript" title="Superscript">X<sup>2</sup></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="removeFormat" title="Clear Formatting"><i class="fas fa-eraser"></i></button>
+                                        </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Clear Formatting Group -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="removeFormat" title="Clear All Formatting"><i class="fas fa-eraser"></i></button>
+                                    <!-- ═══════════ COLORS SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Colors">
+                                        <div class="ribbon-section-label">Colors</div>
+                                        <div class="ribbon-group">
+                                            <div class="color-btn-wrapper">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="hiliteColor" title="Highlight Color">
+                                                    <i class="fas fa-pen" id="hiliteIcon"></i>
+                                                    <span class="color-bar" id="hiliteColorBar" style="background:#ffff00;"></span>
+                                                </button>
+                                                <input type="color" id="hiliteColorPicker" value="#ffff00">
+                                            </div>
+                                            <div class="color-btn-wrapper">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="foreColor" title="Font Color">
+                                                    <span style="font-weight:bold;" id="fontColorIcon">A</span>
+                                                    <span class="color-bar" id="fontColorBar" style="background:#ff0000;"></span>
+                                                </button>
+                                                <input type="color" id="fontColorPicker" value="#ff0000">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- ROW 2: Font Style, Colors, Alignment, Spacing, Insert -->
+                                <!-- ROW 2: Paragraph | Insert | Table | Image | View -->
                                 <div class="ribbon-row-compact">
 
-                                    <!-- Font Formatting Group: Bold, Italic, Underline, etc. -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="italic" title="Italic (Ctrl+I)"><i><b>I</b></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="underline" title="Underline (Ctrl+U)"><u><b>U</b></u></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="strikeThrough" title="Strikethrough"><s>ab</s></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="subscript" title="Subscript">X<sub>2</sub></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="superscript" title="Superscript">X<sup>2</sup></button>
-                                    </div>
-                                    <div class="ribbon-separator"></div>
-
-                                    <!-- Colors Group: Highlight & Font Color -->
-                                    <div class="ribbon-group">
-                                        <!-- Highlight Color Picker -->
-                                        <div class="color-btn-wrapper">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="hiliteColor" title="Text Highlight Color">
-                                                <i class="fas fa-pen" id="hiliteIcon"></i>
-                                                <span class="color-bar" id="hiliteColorBar" style="background:#ffff00;"></span>
-                                            </button>
-                                            <input type="color" id="hiliteColorPicker" value="#ffff00">
-                                        </div>
-                                        <!-- Font Color Picker -->
-                                        <div class="color-btn-wrapper">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="foreColor" title="Font Color">
-                                                <span style="font-weight:bold;" id="fontColorIcon">A</span>
-                                                <span class="color-bar" id="fontColorBar" style="background:#ff0000;"></span>
-                                            </button>
-                                            <input type="color" id="fontColorPicker" value="#ff0000">
+                                    <!-- ═══════════ PARAGRAPH SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Paragraph">
+                                        <div class="ribbon-section-label">Paragraph</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyLeft" title="Align Left"><i class="fas fa-align-left"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyCenter" title="Center"><i class="fas fa-align-center"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyRight" title="Align Right"><i class="fas fa-align-right"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyFull" title="Justify"><i class="fas fa-align-justify"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Bullets"><i class="fas fa-list-ul"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Numbering"><i class="fas fa-list-ol"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="outdent" title="Decrease Indent"><i class="fas fa-outdent"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="indent" title="Increase Indent"><i class="fas fa-indent"></i></button>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Line Spacing">
+                                                    <i class="fas fa-arrows-alt-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.0);return false;">1.0</a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.15);return false;">1.15</a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.5);return false;">1.5</a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.0);return false;">2.0</a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.5);return false;">2.5</a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="setLineSpacing(3.0);return false;">3.0</a></li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Alignment Group -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyLeft" title="Align Left (Ctrl+L)"><i class="fas fa-align-left"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyCenter" title="Center (Ctrl+E)"><i class="fas fa-align-center"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyRight" title="Align Right (Ctrl+R)"><i class="fas fa-align-right"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="justifyFull" title="Justify"><i class="fas fa-align-justify"></i></button>
-                                    </div>
-                                    <div class="ribbon-separator"></div>
-
-                                    <!-- Line Spacing Dropdown -->
-                                    <div class="ribbon-group">
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Line Spacing">
-                                                <i class="fas fa-arrows-alt-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.0);return false;">1.0</a></li>
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.15);return false;">1.15</a></li>
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(1.5);return false;">1.5</a></li>
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.0);return false;">2.0</a></li>
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(2.5);return false;">2.5</a></li>
-                                                <li><a class="dropdown-item" href="#" onclick="setLineSpacing(3.0);return false;">3.0</a></li>
-                                            </ul>
+                                    <!-- ═══════════ INSERT SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Insert">
+                                        <div class="ribbon-section-label">Insert</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="createLink" title="Insert Link (Ctrl+K)"><i class="fas fa-link"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="unlink" title="Remove Link"><i class="fas fa-unlink"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="pasteImage" title="Insert Image"><i class="fas fa-image"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertHorizontalRule" title="Horizontal Line"><i class="fas fa-minus"></i></button>
                                         </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Insert Group: Link, Image, Horizontal Rule -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="createLink" title="Insert Hyperlink (Ctrl+K)"><i class="fas fa-link"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="unlink" title="Remove Hyperlink"><i class="fas fa-unlink"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="pasteImage" title="Insert Picture"><i class="fas fa-image"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertHorizontalRule" title="Insert Horizontal Line"><i class="fas fa-minus"></i></button>
+                                    <!-- ═══════════ TABLE SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Table">
+                                        <div class="ribbon-section-label">Table</div>
+                                        <div class="ribbon-group">
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Insert Table">
+                                                    <i class="fas fa-table"></i>
+                                                </button>
+                                                <div class="dropdown-menu table-picker-dropdown p-2">
+                                                    <div class="table-picker-label mb-1 text-center small">Insert Table</div>
+                                                    <div class="table-picker" id="tablePicker"></div>
+                                                    <div class="table-picker-size text-center small mt-1" id="tablePickerSize">0 × 0</div>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertTableRow('above')" title="Row Above"><i class="fas fa-level-up-alt"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertTableRow('below')" title="Row Below"><i class="fas fa-level-down-alt"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertTableColumn('left')" title="Column Left"><i class="fas fa-caret-square-left"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertTableColumn('right')" title="Column Right"><i class="fas fa-caret-square-right"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deleteTableRow()" title="Delete Row"><i class="fas fa-minus-square"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deleteTableColumn()" title="Delete Column"><i class="fas fa-columns"></i><i class="fas fa-times" style="font-size:6px;position:relative;top:-4px;"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSelectedTableBorders()" title="Toggle Table Borders (Word style)"><i class="fas fa-border-all"></i></button>
+                                        </div>
                                     </div>
                                     <div class="ribbon-separator"></div>
 
-                                    <!-- Theme Toggle Button -->
-                                    <div class="ribbon-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Dark/Light Theme">
-                                            <i class="fas fa-moon" id="themeIcon"></i>
-                                        </button>
+                                    <!-- ═══════════ IMAGE SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="Image">
+                                        <div class="ribbon-section-label">Image</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTextWrapBtn" onclick="toggleImageTextWrap()" title="Toggle Text Wrap (multiline/single line)">
+                                                <i class="fas fa-align-left" id="textWrapIcon"></i><i class="fas fa-image" style="font-size:7px;margin-left:1px;"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="floatSelectedImage('left')" title="Float Left"><i class="fas fa-arrow-left"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="floatSelectedImage('right')" title="Float Right"><i class="fas fa-arrow-right"></i></button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="floatSelectedImage('none')" title="No Float"><i class="fas fa-ban"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="ribbon-separator"></div>
+
+                                    <!-- ═══════════ VIEW SECTION ═══════════ -->
+                                    <div class="ribbon-section" title="View">
+                                        <div class="ribbon-section-label">View</div>
+                                        <div class="ribbon-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleInvisiblesBtn" onclick="toggleInvisibleSymbols()" title="Show/Hide Invisible Symbols (¶ ↵)">
+                                                <i class="fas fa-paragraph" id="invisiblesIcon"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Dark/Light Theme">
+                                                <i class="fas fa-moon" id="themeIcon"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -301,78 +415,121 @@ Dependencies:
                              ================================================ -->
                         <div class="compose-footer">
 
-                            <!-- Template Management Buttons -->
-                            <div class="template-buttons">
-                                <strong title="Save current subject and message to a template slot">Save:</strong>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(1)" title="Save to template slot 1">1</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(2)" title="Save to template slot 2">2</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(3)" title="Save to template slot 3">3</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(4)" title="Save to template slot 4">4</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveTemplate(5)" title="Save to template slot 5">5</button>
-                                <strong class="ms-2" title="Load a previously saved template">Load:</strong>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(1)" id="loadBtn1" title="Load template from slot 1">1</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(2)" id="loadBtn2" title="Load template from slot 2">2</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(3)" id="loadBtn3" title="Load template from slot 3">3</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(4)" id="loadBtn4" title="Load template from slot 4">4</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTemplate(5)" id="loadBtn5" title="Load template from slot 5">5</button>
+                            <!-- Template Management and Export Buttons -->
+                            <div class="template-buttons d-flex flex-wrap align-items-center gap-2">
+                                <div class="template-group">
+                                    <strong title="Save current subject and message to a template slot">Save as Template:</strong>
+                                    <th:block th:each="i : ${#numbers.sequence(1, templateSlots)}">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary js-template-save"
+                                            th:attr="data-template-slot=${i}"
+                                            th:title="'Save to template slot ' + ${i}"
+                                            th:text="${i}">1</button>
+                                    </th:block>
+                                    <strong class="ms-2" title="Load a previously saved template">Load:</strong>
+                                    <th:block th:each="i : ${#numbers.sequence(1, templateSlots)}">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-secondary js-template-load"
+                                            th:id="'loadBtn' + ${i}"
+                                            th:attr="data-template-slot=${i}"
+                                            th:title="'Load template from slot ' + ${i}"
+                                            th:text="${i}">1</button>
+                                    </th:block>
+                                </div>
+                                <div class="export-group ms-3">
+                                    <strong title="Export email content to file">Export:</strong>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="exportToPdf()" title="Export to PDF - Download email as PDF file">
+                                        <i class="fas fa-file-pdf"></i> PDF
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="exportToDocx()" title="Export to Word - Download email as Microsoft Word (.docx) file">
+                                        <i class="fas fa-file-word"></i> Word
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Send Options Panel -->
-                            <div class="send-options mt-2 p-2 border rounded bg-light" title="Configure how emails are sent">
-                                <!-- Individual Mode Options -->
-                                <div class="row align-items-center mb-2">
-                                    <div class="col-12">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeIndividual" value="individual" checked onchange="document.getElementById('sendMode').value='individual'" title="Send one email at a time to each recipient">
-                                            <label class="form-check-label" for="sendModeIndividual" title="Send one email at a time to each recipient"><strong>One by one</strong></label>
+                            <!-- Send Options Panel with Publishing Checkboxes on Left, Send Modes on Right -->
+                            <div class="send-options mt-2 p-2 border rounded bg-light" title="Configure how messages are sent - select publishing destinations and sending mode">
+                                <div class="row align-items-start">
+                                    <!-- LEFT SIDE: Publishing Checkboxes -->
+                                    <div class="col-auto publishing-options" title="Select where to publish your message">
+                                        <div class="form-check" title="Post this message to your Facebook page">
+                                            <input class="form-check-input" type="checkbox" id="publishFacebook" title="Enable to publish this message to Facebook">
+                                            <label class="form-check-label" for="publishFacebook" title="Post to Facebook page"><i class="fab fa-facebook text-primary" title="Facebook"></i> Publish to Facebook</label>
                                         </div>
-                                        <select class="form-select form-select-sm d-inline-block" id="addressMode" style="width:80px;" title="Address field type - To (visible) or BCC (hidden)">
-                                            <option value="to">To</option>
-                                            <option value="bcc">BCC</option>
-                                        </select>
-                                        <label class="ms-3 me-1" title="Delay between sending each email">Delay:</label>
-                                        <input type="number" class="form-control form-control-sm d-inline-block" id="sendDelay" value="500" min="0" max="60000" style="width:80px;" title="Milliseconds to wait between sending each email (0-60000)">
-                                        <span class="text-muted" title="Milliseconds">ms</span>
+                                        <div class="form-check" title="Post this message to your Instagram account">
+                                            <input class="form-check-input" type="checkbox" id="publishInstagram" title="Enable to publish this message to Instagram">
+                                            <label class="form-check-label" for="publishInstagram" title="Post to Instagram"><i class="fab fa-instagram text-danger" title="Instagram"></i> Publish to Instagram</label>
+                                        </div>
+                                        <div class="form-check" title="Send emails to selected recipients">
+                                            <input class="form-check-input" type="checkbox" id="sendEmailRecipients" checked title="Enable to send email to recipients in the list">
+                                            <label class="form-check-label" for="sendEmailRecipients" title="Send via email"><i class="fas fa-envelope text-info" title="Email"></i> Send emails to recipients</label>
+                                        </div>
                                     </div>
-                                </div>
-                                <!-- Batch Mode Options -->
-                                <div class="row align-items-center">
-                                    <div class="col-12">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeBatch" value="batch" onchange="document.getElementById('sendMode').value='batch'" title="Send to multiple recipients in a single email">
-                                            <label class="form-check-label" for="sendModeBatch" title="Send to multiple recipients in a single email"><strong>Batch</strong></label>
+
+                                    <!-- RIGHT SIDE: Send Mode Options (vertically stacked) -->
+                                    <div class="col send-mode-options" title="Choose how emails are sent to recipients">
+                                        <!-- Individual Mode Row -->
+                                        <div class="send-mode-row mb-2" title="Send emails one at a time to each recipient individually">
+                                            <div class="form-check" title="Select this mode to send separate email to each recipient">
+                                                <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeIndividual" value="individual" checked onchange="document.getElementById('sendMode').value='individual'" title="Send one email per recipient sequentially">
+                                                <label class="form-check-label send-mode-label" for="sendModeIndividual" title="Send Messages → One by one: Each recipient receives their own email">
+                                                    <strong>Send Messages → One by one</strong>
+                                                </label>
+                                            </div>
+                                            <div class="send-mode-controls" title="Options for one-by-one sending mode">
+                                                <select class="form-select form-select-sm" id="addressMode" title="Address field type - To: recipient visible, BCC: recipient hidden">
+                                                    <option value="to" title="Recipient address shown in To field">To</option>
+                                                    <option value="bcc" title="Recipient address hidden in BCC field">BCC</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <select class="form-select form-select-sm d-inline-block" id="batchAddressMode" style="width:80px;" title="Address field type - BCC (hidden) or To (visible)">
-                                            <option value="bcc" selected>BCC</option>
-                                            <option value="to">To</option>
-                                        </select>
-                                        <label class="ms-3 me-1" title="Number of recipients per batch email">Size:</label>
-                                        <input type="number" class="form-control form-control-sm d-inline-block" id="batchSize" value="2" min="1" max="50" style="width:70px;" title="Number of recipients per batch email (1-50)">
+                                        <!-- Batch Mode Row -->
+                                        <div class="send-mode-row mb-2" title="Send emails to multiple recipients at once in batches">
+                                            <div class="form-check" title="Select this mode to send one email to multiple recipients">
+                                                <input class="form-check-input" type="radio" name="sendModeRadio" id="sendModeBatch" value="batch" onchange="document.getElementById('sendMode').value='batch'" title="Send to multiple recipients per email message">
+                                                <label class="form-check-label send-mode-label" for="sendModeBatch" title="Send Messages → Batch: Multiple recipients per email">
+                                                    <strong>Send Messages → Batch</strong>
+                                                </label>
+                                            </div>
+                                            <div class="send-mode-controls" title="Options for batch sending mode">
+                                                <select class="form-select form-select-sm" id="batchAddressMode" title="Address field type - BCC: recipients hidden from each other, To: recipients visible">
+                                                    <option value="bcc" selected title="Recipients hidden from each other (recommended)">BCC</option>
+                                                    <option value="to" title="All recipients visible to each other">To</option>
+                                                </select>
+                                                <label class="ms-2 me-1" title="How many recipients per batch email">Size:</label>
+                                                <input type="number" class="form-control form-control-sm" id="batchSize" value="2" min="1" max="50" title="Number of recipients per batch email (1-50). Larger batches are faster but may trigger spam filters.">
+                                                <label class="ms-2 me-1" title="Time to wait between sending each email or batch"><i class="fas fa-clock text-secondary"></i> Delay (for both options):</label>
+                                                <input type="number" class="form-control form-control-sm" id="sendDelay" value="500" min="0" max="60000" title="Milliseconds to wait between sends (0-60000). Higher values reduce server load.">
+                                                <span class="text-muted ms-1" title="Milliseconds">ms</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <!-- Hidden field to track current send mode -->
-                                <input type="hidden" id="sendMode" value="individual">
+                                <input type="hidden" id="sendMode" value="individual" title="Current send mode value">
                             </div>
 
                             <!-- Action Buttons Row -->
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div class="d-flex align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mt-3" title="Send controls and status">
+                                <div class="d-flex align-items-center" title="Test and status controls">
                                     <!-- Test Send Button - shows first email from list -->
-                                    <button class="btn btn-outline-secondary" id="sendTestBtn" onclick="sendTestEmail()" title="Send a test email to the first recipient in the list">
-                                        <i class="fas fa-paper-plane"></i> Send Test email to: <span id="testEmailTarget" th:text="${emails != null && !emails.isEmpty() ? emails.get(0) : 'N/A'}">N/A</span>
+                                    <button class="btn btn-outline-secondary" id="sendTestBtn" onclick="sendTestEmail()" title="Send a test email to verify your message looks correct before sending to all recipients">
+                                        <i class="fas fa-paper-plane" title="Send test"></i> Send Test email to: <span id="testEmailTarget" th:text="${emails != null && !emails.isEmpty() ? emails.get(0) : 'N/A'}" title="Test recipient address">N/A</span>
                                     </button>
                                     <!-- Connection Status Badge (updated via JS) -->
-                                    <span id="connectionStatus" class="ms-2 badge bg-secondary" title="Mail server connection status - checked every 20 seconds"><i class="fas fa-plug"></i> Checking...</span>
+                                    <span id="connectionStatus" class="ms-2 badge bg-secondary" title="Mail server connection status - green means connected, red means disconnected. Checked automatically every 20 seconds."><i class="fas fa-plug" title="Connection indicator"></i> Checking...</span>
                                     <!-- Send Progress Status Line (hidden by default) -->
-                                    <span id="sendStatusLine" class="ms-3 text-muted small" style="display:none;" title="Current send progress"></span>
+                                    <span id="sendStatusLine" class="ms-3 text-muted small" style="display:none;" title="Shows progress: sent count, success count, and failure count during sending"></span>
                                 </div>
-                                <div class="d-flex align-items-center">
+                                <div class="d-flex align-items-center" title="Send action buttons">
                                     <!-- Stop Button (disabled by default, enabled during sending) -->
-                                    <button class="btn btn-danger btn-stop" id="stopBtn" onclick="stopSending()" disabled title="Stop the email sending process immediately">
-                                        <i class="fas fa-stop"></i> Stop
+                                    <button class="btn btn-danger btn-stop" id="stopBtn" onclick="stopSending()" disabled title="Click to immediately stop the email sending process. Emails already sent cannot be recalled.">
+                                        <i class="fas fa-stop" title="Stop sending"></i> Stop
                                     </button>
                                     <!-- Main Send Button -->
-                                    <button class="btn btn-primary btn-send" onclick="sendEmails()" title="Send email to all selected recipients using the configured send mode"><i class="fas fa-mail-bulk"></i> Send to All Selected</button>
+                                    <button class="btn btn-primary btn-send" onclick="sendEmails()" title="Start sending emails to all selected recipients using the configured send mode (One by one or Batch)"><i class="fas fa-mail-bulk" title="Send emails"></i> Send to All Selected</button>
                                 </div>
                             </div>
                         </div>
@@ -382,6 +539,12 @@ Dependencies:
                 </div>
             </div>
             <!-- END LEFT COLUMN -->
+
+            <!-- ============================================================
+                 RESIZABLE DIVIDER
+                 Allows user to resize the two columns by dragging
+                 ============================================================ -->
+            <div class="column-resizer" id="columnResizer" title="Drag to resize columns"></div>
 
             <!-- ============================================================
                  RIGHT COLUMN - RECIPIENTS LIST
@@ -519,6 +682,84 @@ Dependencies:
         </div>
     </div>
 
+    <!-- Configuration Modal -->
+    <div class="modal fade" id="configModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="fas fa-cog"></i> Configuration</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="configForm">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <h6>SMTP</h6>
+                  <label class="form-label">Host</label>
+                  <input type="text" class="form-control" name="spring.mail.host">
+                  <label class="form-label mt-2">Port</label>
+                  <input type="number" class="form-control" name="spring.mail.port">
+                  <label class="form-label mt-2">Username</label>
+                  <input type="text" class="form-control" name="spring.mail.username">
+                  <label class="form-label mt-2">Password</label>
+                  <input type="password" class="form-control" name="spring.mail.password" placeholder="••••••">
+                  <small class="text-muted">Will be encrypted with Jasypt on save</small>
+                </div>
+                <div class="col-md-6">
+                  <h6>Sender</h6>
+                  <label class="form-label">From Address</label>
+                  <input type="email" class="form-control" name="mail.from">
+                  <label class="form-label mt-2">From Name</label>
+                  <input type="text" class="form-control" name="mail.from.name">
+                  <h6 class="mt-4">Editor</h6>
+                  <label class="form-label">Default Text Color</label>
+                  <select class="form-select" name="app.editor.default.text.color">
+                    <option value="white">white</option>
+                    <option value="black">black</option>
+                  </select>
+                  <label class="form-label mt-2">Template Slots</label>
+                  <input type="number" class="form-control" name="app.template.slots" min="1" max="10">
+                </div>
+                <div class="col-md-12">
+                  <h6>Facebook</h6>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="facebookEnabledSwitch">
+                    <label class="form-check-label" for="facebookEnabledSwitch">Enable Facebook</label>
+                  </div>
+                  <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                      <label class="form-label">Email</label>
+                      <input type="email" class="form-control" name="facebook.email">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Password</label>
+                      <input type="password" class="form-control" name="facebook.password" placeholder="••••••">
+                      <small class="text-muted">Will be encrypted with Jasypt on save</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Page ID</label>
+                      <input type="text" class="form-control" name="facebook.page.id">
+                    </div>
+                    <div class="col-md-6 mt-2">
+                      <label class="form-label">Access Token</label>
+                      <input type="password" class="form-control" name="facebook.access.token" placeholder="••••••">
+                      <small class="text-muted">Will be encrypted with Jasypt on save</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <span id="configStatus" class="text-muted me-auto"></span>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-outline-primary" onclick="saveConfiguration(true)">Save &amp; Close</button>
+            <button type="button" class="btn btn-primary" onclick="saveConfiguration(false)">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================================================================
          SCRIPTS
          - Bootstrap bundle (includes Popper for dropdowns)
@@ -528,10 +769,21 @@ Dependencies:
     <!-- Pass server configuration to JavaScript -->
     <script th:inline="javascript">
         window.editorConfig = {
-            defaultTextColor: /*[[${editorDefaultTextColor}]]*/ 'white'
+            defaultTextColor: /*[[${editorDefaultTextColor}]]*/ '#000000',
+            templateSlots: /*[[${templateSlots}]]*/ 5
         };
     </script>
     <script src="/js/app.js"></script>
+    <script>
+    // Re-run table resizing on load so tables from templates get handles
+    window.addEventListener('load', function() {
+        if (typeof initTableResizing === 'function') {
+            initTableResizing();
+        }
+    });
+    </script>
 </body>
 </html>
+
+
 

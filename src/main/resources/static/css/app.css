@@ -57,6 +57,12 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
 /* Purple/blue gradient header matching application branding */
 .card-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold; }
 
+/* Header menu styles - integrated into card header */
+.header-menu { margin: 0; padding: 0; }
+.header-menu .nav-link { color: white; font-size: 14px; padding: 4px 10px; font-weight: normal; }
+.header-menu .nav-link:hover { background-color: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+.header-menu .dropdown-menu { font-size: 14px; }
+
 /* ============================================================================
    3. TWO-COLUMN LAYOUT (Compose & Recipients)
    ============================================================================
@@ -71,6 +77,26 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
 
 /* Recipients column: Fixed width of 420px (fits 34-char emails + padding) */
 .col-recipients { flex: 0 0 420px; width: 420px; padding-left: 10px; display: flex; flex-direction: column; }
+
+/* Column resizer: Draggable divider between compose and recipients columns */
+.column-resizer {
+    width: 5px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.column-resizer:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+    width: 7px;
+}
+
+.column-resizer:active {
+    background: #667eea;
+}
 
 /* Equal height columns container - ensures both columns match heights */
 .equal-height { display: flex; flex-wrap: nowrap; flex: 1; height: 100%; }
@@ -132,6 +158,39 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
 
 /* Editor focus state - blue outline matching Bootstrap */
 .editor-container:focus { outline: none; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); border-color: #86b7fe; }
+
+/* =============================================================================
+   Theme-based editor text colors
+   =============================================================================
+   Ensures default editor text + placeholder text are readable in both themes.
+*/
+
+#editor {
+    color: #000000;
+}
+
+body.theme-dark #editor {
+    color: #f5f5f5;
+}
+
+/* "Type your email here..." placeholder (stored as actual text in a <p>) */
+#editor p:first-child:only-child {
+    color: #6c757d !important;  /* Gray placeholder color */
+    font-style: italic;
+}
+
+/* When editor has real content, don't style first paragraph as placeholder */
+#editor:not(:empty) p:first-child:not(:only-child) {
+    color: inherit;
+    font-style: normal;
+}
+
+/* Ensure caret and selection remain visible in dark theme */
+body.theme-dark #editor::selection,
+body.theme-dark #editor *::selection {
+    background: rgba(102, 126, 234, 0.35);
+    color: #ffffff;
+}
 
 /* ============================================================================
    4.1 IMAGES IN EDITOR
@@ -380,6 +439,28 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
     flex-wrap: wrap;
 }
 
+/* Ribbon section - contains label + group */
+.ribbon-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+/* Section label below button groups */
+.ribbon-section-label {
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+    white-space: nowrap;
+}
+
+body.theme-dark .ribbon-section-label {
+    color: #aaa;
+}
+
 /* Button group - groups related buttons together */
 .ribbon-group {
     display: flex;
@@ -390,8 +471,152 @@ body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; overflow-y: aut
 /* Vertical separator between button groups */
 .ribbon-separator {
     width: 1px;
-    height: 22px;
+    height: 32px;
     margin: 0 4px;
+}
+
+/* ============================================================================
+   9.0.1 TABLE PICKER STYLES
+   ============================================================================ */
+
+/* Table picker dropdown */
+.table-picker-dropdown {
+    min-width: 160px;
+}
+
+.table-picker-label {
+    font-weight: 500;
+    color: #333;
+}
+
+body.theme-dark .table-picker-label {
+    color: #ddd;
+}
+
+/* Grid of cells for picking table size */
+.table-picker {
+    display: grid;
+    grid-template-columns: repeat(6, 22px);
+    grid-template-rows: repeat(6, 22px);
+    gap: 2px;
+}
+
+.table-picker-cell {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.table-picker-cell:hover,
+.table-picker-cell.highlight {
+    background: #007bff;
+    border-color: #007bff;
+}
+
+body.theme-dark .table-picker-cell {
+    border-color: #555;
+    background: #333;
+}
+
+body.theme-dark .table-picker-cell:hover,
+body.theme-dark .table-picker-cell.highlight {
+    background: #007bff;
+    border-color: #007bff;
+}
+
+.table-picker-size {
+    font-size: 11px;
+    color: #666;
+}
+
+body.theme-dark .table-picker-size {
+    color: #aaa;
+}
+
+/* Table resize handles */
+.table-resize-handle {
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.table-resize-handle:hover {
+    background: rgba(0, 123, 255, 0.3);
+}
+
+.table-resize-col:hover {
+    background: rgba(0, 123, 255, 0.5);
+}
+
+.table-resize-row:hover {
+    background: rgba(0, 123, 255, 0.5);
+}
+
+/* Editor table default styles */
+.editor-table {
+    border-collapse: collapse;
+    margin: 10px 0;
+    table-layout: fixed;
+    resize: both;
+    overflow: auto;
+    min-width: 100px;
+    max-width: 100%;
+}
+
+.editor-table td,
+.editor-table th {
+    border: 1px solid #ccc;
+    padding: 8px;
+    min-width: 50px;
+    position: relative;
+    color: #000000; /* Black text for light theme */
+}
+
+body.theme-dark .editor-table td,
+body.theme-dark .editor-table th {
+    color: #ffffff; /* White text for dark theme */
+    border-color: #555;
+}
+
+.editor-table td:focus,
+.editor-table th:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+}
+
+/* Table selection highlight */
+.editor-table:focus-within {
+    outline: 2px dashed #007bff;
+    outline-offset: 2px;
+}
+
+/* Tables with invisible borders */
+.editor-table.no-border td,
+.editor-table.no-border th {
+    border: none;
+}
+
+.editor-container.show-invisibles .editor-table.no-border td,
+.editor-container.show-invisibles .editor-table.no-border th {
+    border: 1px dashed rgba(0, 123, 255, 0.3);
+}
+
+/* ============================================================================
+   9.0.2 IMAGE TEXT WRAP TOGGLE STYLES
+   ============================================================================ */
+
+#toggleTextWrapBtn.active {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+}
+
+body.theme-dark #toggleTextWrapBtn.active {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
 }
 
 /* ============================================================================
@@ -675,7 +900,7 @@ body.theme-dark .editor-container p:not([style*="color"]),
 body.theme-dark .editor-container div:not([style*="color"]),
 body.theme-dark .editor-container span:not([style*="color"]),
 body.theme-dark .editor-container b:not([style*="color"]),
-body.theme-dark .editor-container i:not([style*="color"]),
+body.theme.dark .editor-container i:not([style*="color"]),
 body.theme-dark .editor-container u:not([style*="color"]),
 body.theme-dark .editor-container strong:not([style*="color"]),
 body.theme-dark .editor-container em:not([style*="color"]),
@@ -733,7 +958,7 @@ body.theme-dark .editor-ribbon-compact .btn {
 }
 
 body.theme-dark .editor-ribbon-compact .btn i,
-body.theme-dark .editor-ribbon-compact .btn .fa,
+body.theme.dark .editor-ribbon-compact .btn .fa,
 body.theme-dark .editor-ribbon-compact .btn .fas,
 body.theme-dark .editor-ribbon-compact .btn .far {
     color: #e0e0e0;
@@ -821,8 +1046,196 @@ body.theme-dark .send-options label {
     color: #e0e0e0;
 }
 
-body.theme-dark .send-options .text-muted {
+body.theme.dark .send-options .text-muted {
     color: #aaa !important;
+}
+
+/* ============================================================================
+   SEND OPTIONS LABEL HELPERS
+   ============================================================================ */
+
+.send-messages-label {
+    display: inline;
+}
+
+/* ============================================================================
+   PUBLISHING OPTIONS (LEFT SIDE)
+   ============================================================================ */
+
+.publishing-options {
+    min-width: 220px;
+    padding-right: 20px;
+    border-right: 1px solid #ddd;
+}
+
+.publishing-options .form-check {
+    margin-bottom: 5px;
+}
+
+.publishing-options .form-check-label {
+    font-size: 13px;
+}
+
+.publishing-options .form-check-label i {
+    margin-right: 5px;
+    width: 16px;
+}
+
+/* ============================================================================
+   SEND MODE OPTIONS (RIGHT SIDE - VERTICAL LAYOUT)
+   ============================================================================ */
+
+.send-mode-options {
+    padding-left: 20px;
+}
+
+/* Each send mode row: label + controls on same line */
+.send-mode-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.send-mode-row .form-check {
+    margin-bottom: 0;
+    min-width: 220px;
+}
+
+.send-mode-label {
+    white-space: nowrap;
+}
+
+/* Controls group inline */
+.send-mode-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.send-mode-controls .form-select {
+    width: 70px;
+}
+
+.send-mode-controls .form-control {
+    width: 65px;
+}
+
+.send-mode-controls label {
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+/* Shared delay row styling */
+.shared-delay-row {
+    padding-top: 8px;
+    border-top: 1px dashed #ccc;
+    margin-top: 4px;
+}
+
+.shared-delay-row label {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.shared-delay-row .form-control {
+    width: 70px;
+}
+
+/* Dark theme for shared delay row */
+body.theme-dark .shared-delay-row {
+    border-top-color: #555;
+}
+
+/* ============================================================================
+   INVISIBLE SYMBOLS TOGGLE STYLES
+   ============================================================================ */
+
+/* Active state for invisible symbols button */
+#toggleInvisiblesBtn.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+body.theme-dark #toggleInvisiblesBtn.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+/* Show invisible symbols in editor */
+.editor-container.show-invisibles {
+    /* Tab indicator */
+    tab-size: 4;
+    -moz-tab-size: 4;
+}
+
+/* Paragraph markers (pilcrow) for line breaks */
+.editor-container.show-invisibles p::after,
+.editor-container.show-invisibles div:not(.resize-handle):not(.drop-indicator)::after {
+    content: "¶";
+    color: #999;
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+/* Show table borders */
+.editor-container.show-invisibles table {
+    border: 1px dashed #0d6efd !important;
+}
+
+.editor-container.show-invisibles td,
+.editor-container.show-invisibles th {
+    border: 1px dashed #6c757d !important;
+}
+
+/* Show image borders/frames */
+.editor-container.show-invisibles img {
+    outline: 2px dashed #28a745 !important;
+    outline-offset: 2px;
+}
+
+/* Show horizontal rule markers */
+.editor-container.show-invisibles hr {
+    border-color: #dc3545 !important;
+    border-style: dashed !important;
+}
+
+/* Show link indicators */
+.editor-container.show-invisibles a {
+    outline: 1px dotted #ffc107;
+    outline-offset: 1px;
+}
+
+/* Show line break markers */
+.editor-container.show-invisibles br::after {
+    content: "↵";
+    color: #17a2b8;
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+/* Show space markers (using word-spacing trick for visualization) */
+.editor-container.show-invisibles {
+    background-image:
+        linear-gradient(90deg, transparent 0%, transparent 49%, rgba(0,0,0,0.05) 50%, transparent 51%, transparent 100%);
+    background-size: 0.5em 100%;
+}
+
+/* Dark theme adjustments for invisible symbols */
+body.theme-dark .editor-container.show-invisibles p::after,
+body.theme-dark .editor-container.show-invisibles div:not(.resize-handle):not(.drop-indicator)::after {
+    color: #666;
+}
+
+body.theme-dark .editor-container.show-invisibles br::after {
+    color: #5bc0de;
+}
+
+body.theme-dark .editor-container.show-invisibles {
+    background-image:
+        linear-gradient(90deg, transparent 0%, transparent 49%, rgba(255,255,255,0.05) 50%, transparent 51%, transparent 100%);
 }
 
 /* Dark theme - template buttons */
@@ -847,7 +1260,7 @@ body.theme-dark .email-item {
     color: #e0e0e0;
 }
 
-body.theme-dark .email-item:hover {
+body.theme.dark .email-item:hover {
     background-color: #3d3d3d;
 }
 
@@ -950,7 +1363,7 @@ body.theme-dark .btn-outline-primary {
     color: #667eea;
 }
 
-body.theme-dark .btn-outline-primary:hover {
+body.theme.dark .btn-outline-primary:hover {
     background-color: #667eea;
     color: #fff;
 }
@@ -1022,7 +1435,7 @@ body.theme-dark .text-body {
     color: #e0e0e0 !important;
 }
 
-body.theme-dark .text-black {
+body.theme.dark .text-black {
     color: #e0e0e0 !important;
 }
 
@@ -1073,7 +1486,7 @@ body.theme-dark .card span {
 
 /* Dark theme - placeholder text */
 body.theme-dark input::placeholder,
-body.theme-dark textarea::placeholder {
+body.theme.dark textarea::placeholder {
     color: #888 !important;
 }
 
@@ -1082,7 +1495,7 @@ body.theme-dark a {
     color: #7c9eff;
 }
 
-body.theme-dark a:hover {
+body.theme.dark a:hover {
     color: #a0b8ff;
 }
 
@@ -1111,8 +1524,8 @@ body.theme-dark .dropdown-menu .dropdown-item {
     color: #e0e0e0;
 }
 
-body.theme-dark .dropdown-menu .dropdown-item:hover,
-body.theme-dark .dropdown-menu .dropdown-item:focus {
+body.theme.dark .dropdown-menu .dropdown-item:hover,
+body.theme.dark .dropdown-menu .dropdown-item:focus {
     background-color: #4a4a4a;
     color: #fff;
 }
@@ -1278,6 +1691,242 @@ body.theme-dark .editor-ribbon-compact .btn u b {
     border-color: #6c757d;
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* ============================================================================
+   13. DROPDOWN SUBMENU STYLES (CASCADING MENUS)
+   ============================================================================
+   Styles for nested dropdowns (dropend) used in File menu for templates.
+   ============================================================================ */
+
+.dropdown-menu .dropdown-toggle::after {
+    float: right;
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+    border-top: 0.3em solid transparent;
+    border-right: 0;
+    border-bottom: 0.3em solid transparent;
+    border-left: 0.3em solid;
+}
+
+.dropdown-menu .dropend > .dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-top: -1px;
+    margin-left: 0;
+}
+
+.dropdown-menu .dropend:hover > .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu .dropend > .dropdown-toggle:active {
+    pointer-events: none;
+}
+
+/* Dark theme dropdown submenu styles */
+body.theme-dark .dropdown-menu .dropdown-toggle::after {
+    border-left-color: #e0e0e0;
+}
+
+/* ============================================================================
+   14. HELP DOCUMENTATION STYLES
+   ============================================================================
+   Styles for the detailed help documentation modal.
+   ============================================================================ */
+
+.help-documentation {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 15px;
+    font-size: 14px;
+}
+
+.help-documentation h4 {
+    color: #667eea;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.help-documentation h5 {
+    color: #764ba2;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.help-toc {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+.help-toc h5 {
+    margin-top: 0;
+    color: #667eea;
+}
+
+.help-toc ol {
+    margin-bottom: 0;
+    padding-left: 25px;
+}
+
+.help-toc a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.help-toc a:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
+.help-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.help-section:last-of-type {
+    border-bottom: none;
+}
+
+.help-section ul,
+.help-section ol {
+    padding-left: 25px;
+}
+
+.help-section li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.help-section p {
+    margin-bottom: 12px;
+}
+
+.help-section strong {
+    color: #495057;
+}
+
+.help-section code {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #d63384;
+}
+
+.help-footer {
+    background: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 30px;
+    text-align: center;
+}
+
+.help-footer p {
+    margin-bottom: 5px;
+}
+
+/* Dark theme help documentation */
+body.theme-dark .help-documentation {
+    color: #e0e0e0;
+}
+
+body.theme-dark .help-toc {
+    background: #2d2d2d;
+    border-color: #444;
+}
+
+body.theme-dark .help-section {
+    border-bottom-color: #444;
+}
+
+body.theme-dark .help-section strong {
+    color: #fff;
+}
+
+body.theme-dark .help-section code {
+    background: #2d2d2d;
+    border-color: #444;
+    color: #ff79c6;
+}
+
+body.theme-dark .help-footer {
+    background: #2d2d2d;
+}
+
+/* ============================================================================
+   15. TABLE CELL AND HANDLE STYLES
+   ============================================================================
+   Reusable classes for table cells and resize handles.
+   ============================================================================ */
+
+.table-cell-default {
+    border: 1px solid #ccc;
+    padding: 8px;
+    min-width: 50px;
+}
+
+.table-col-handle {
+    position: absolute;
+    width: 8px;
+    height: 100%;
+    background: transparent;
+    cursor: col-resize;
+    z-index: 10;
+    border-right: 2px solid transparent;
+}
+
+.table-col-handle:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-right-color: #667eea;
+}
+
+.table-row-handle {
+    position: absolute;
+    width: 100%;
+    height: 8px;
+    background: transparent;
+    cursor: row-resize;
+    z-index: 10;
+    border-bottom: 2px solid transparent;
+}
+
+.table-row-handle:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-bottom-color: #667eea;
+}
+
+.table-resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #667eea;
+    border: 2px solid white;
+    border-radius: 2px;
+    cursor: nwse-resize;
+    z-index: 20;
+}
+
+.img-float-left {
+    float: left;
+    margin: 0 15px 10px 0;
+    height: auto;
+    display: block;
+}
+
+.img-inline {
+    display: inline;
+    vertical-align: middle;
+    margin: 0 5px;
+    height: auto;
 }
 
 /* ============================================================================

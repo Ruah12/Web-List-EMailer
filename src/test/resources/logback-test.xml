@@ -1,29 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- Keep using Spring Boot's defaults, but override the console pattern
-         so logs include thread name and calling method (function). -->
+    <!-- Test logging configuration -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml" />
 
-    <!--
-      Pattern fields:
-        %d{...}           timestamp
-        %-5level          log level
-        [%thread]         thread name
-        %logger{36}.%M    logger + method name (call-site).
-      Note: %M requires caller data, which has a small performance cost; keep this enabled
-      only if you need method names in production logs.
-    -->
     <property name="CONSOLE_LOG_PATTERN"
               value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36}.%M - %msg%n"/>
 
     <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
 
-    <!-- App-specific logger levels -->
+    <!-- App-specific logger levels for testing -->
     <logger name="com.kisoft" level="DEBUG" />
 
     <timestamp key="STARTUP_TS" datePattern="yyyy-MM-dd_HH-mm-ss"/>
-    <property name="LOG_FILE" value="logs/Web-List-EMailer-${STARTUP_TS}.log"/>
+    <property name="LOG_FILE" value="logs/test-${STARTUP_TS}.log"/>
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <file>${LOG_FILE}</file>

@@ -10,28 +10,22 @@ import java.util.Map;
 
 /**
  * Send Result DTO - Contains the results of an email send operation.
- *
- * <p>This class is returned by the /api/send endpoint and contains:</p>
- * <ul>
- *   <li>Total count of emails attempted</li>
- *   <li>Success and failure counts</li>
- *   <li>List of failed email addresses</li>
- *   <li>Map of error messages per failed email</li>
- *   <li>Human-readable summary message</li>
- * </ul>
- *
- * <h3>Usage:</h3>
- * <pre>
- * SendResult result = new SendResult(10, 0, 0, "", new ArrayList<>());
- * // ... send emails ...
- * result.setSuccessCount(8);
- * result.setFailCount(2);
- * result.addErrorMessage("bad@email.com", "SMTP error: Connection refused");
- * </pre>
- *
+ * This class is returned by the {@code /api/send} endpoint and contains:
+ * - Total count of emails attempted
+ * - Success and failure counts
+ * - List of failed email addresses
+ * - Map of error messages per failed email
+ * - Human-readable summary message
+ * Usage Example:
+ * {@code SendResult result = new SendResult(10, 0, 0, "", new ArrayList<>());}
+ * {@code result.setSuccessCount(8);}
+ * {@code result.setFailCount(2);}
+ * {@code result.addErrorMessage("bad@email.com", "SMTP error: Connection refused");}
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see com.kisoft.emaillist.controller.EmailController
+ * @see com.kisoft.emaillist.service.EmailSenderService
  */
 @Data
 @NoArgsConstructor

@@ -13,30 +13,25 @@ import java.util.stream.Collectors;
 
 /**
  * Email List Service - Manages the recipient email list.
- *
- * <p>This service handles loading, saving, and manipulating the email recipient list.
- * It supports two storage locations:</p>
- * <ol>
- *   <li><b>External file</b>: email-list.txt in the application's working directory (preferred)</li>
- *   <li><b>Classpath resource</b>: email-list.txt in src/main/resources (fallback)</li>
- * </ol>
- *
- * <h3>Email Normalization:</h3>
- * <p>All emails are cleaned/normalized by:</p>
- * <ul>
- *   <li>Removing BOM (Byte Order Mark) characters</li>
- *   <li>Removing zero-width spaces and format characters</li>
- *   <li>Converting to lowercase</li>
- *   <li>Trimming whitespace</li>
- * </ul>
- *
- * <h3>Duplicate Handling:</h3>
- * <p>The service uses LinkedHashSet internally to prevent duplicates while
- * maintaining insertion order.</p>
- *
+ * This service handles loading, saving, and manipulating the email recipient list.
+ * It supports two storage locations:
+ * 1. External file: {@code email-list.txt} in the application's working directory (preferred)
+ * 2. Classpath resource: {@code email-list.txt} in {@code src/main/resources} (fallback)
+ * Email Normalization:
+ * All emails are cleaned/normalized by:
+ * - Removing BOM (Byte Order Mark) characters
+ * - Removing zero-width spaces and format characters
+ * - Converting to lowercase
+ * - Trimming whitespace
+ * Duplicate Handling:
+ * The service uses {@code LinkedHashSet} internally to prevent duplicates while
+ * maintaining insertion order.
+ * Configuration:
+ * - {@code email.list.file} - Configurable filename (default: {@code email-list.txt})
  * @author KiSoft
  * @version 1.0.0
  * @since 2025-12-26
+ * @see com.kisoft.emaillist.controller.EmailController
  */
 @Service
 @Slf4j
@@ -61,8 +56,7 @@ public class EmailListService {
 
     /**
      * Gets the path to the external email list file.
-     *
-     * @return Path to email-list.txt in current working directory
+     * @return Path to {@code email-list.txt} in current working directory
      */
     private Path getExternalFilePath() {
         return Paths.get(System.getProperty("user.dir"), "email-list.txt");
@@ -70,11 +64,9 @@ public class EmailListService {
 
     /**
      * Cleans and normalizes an email address.
-     *
-     * <p>Removes invisible characters, BOM, and normalizes to lowercase.</p>
-     *
+     * Removes invisible characters, BOM, and normalizes to lowercase.
      * @param email Raw email string
-     * @return Cleaned, lowercase email or null if input was null
+     * @return Cleaned, lowercase email or {@code null} if input was {@code null}
      */
     private String cleanEmail(String email) {
         if (email == null) return null;
@@ -89,15 +81,10 @@ public class EmailListService {
 
     /**
      * Loads the email list from external file or classpath resource.
-     *
-     * <p>Priority order:</p>
-     * <ol>
-     *   <li>External file: {working-dir}/email-list.txt</li>
-     *   <li>Classpath resource: src/main/resources/email-list.txt</li>
-     * </ol>
-     *
-     * <p>Emails are deduplicated while maintaining order.</p>
-     *
+     * Priority order:
+     * 1. External file: {@code {working-dir}/email-list.txt}
+     * 2. Classpath resource: {@code src/main/resources/email-list.txt}
+     * Emails are deduplicated while maintaining order.
      * @return List of unique, cleaned email addresses
      */
     public List<String> loadEmailList() {
